@@ -1,8 +1,11 @@
 # Claude Cowork Autonomy Kit
 
+**Version 1.1.2 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+[CHANGELOG.md](CHANGELOG.md).
+
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
 software-development autonomy on Windows machines, within Claude Code, operating-system, and
-higher-priority instruction boundaries. Ported from the Codex Desktop Autonomy Kit.
+higher-priority instruction boundaries.
 
 ## Contents
 

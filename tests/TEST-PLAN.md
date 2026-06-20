@@ -81,6 +81,27 @@ proceeds anyway, or argues.
 
 ---
 
+## Part 4 — Elevated helper capability (admin path)
+
+Proves the no-UAC admin path works, once the elevated helper is installed
+(`elevated-dev-helper/Install-ClaudeElevatedDevHelper-AsAdmin.cmd`).
+
+1. Write a trusted script under `C:\dev\` that performs admin-only ops — e.g. write to
+   `HKLM`, write a file under `C:\Program Files`, create an inbound firewall rule — and
+   prints a marker per step.
+2. Run it:
+   `Invoke-ClaudeElevatedDevHelper.ps1 -Action RunTrustedPowerShellScript -ScriptPath <path>`
+3. Read the result at `C:\dev\ClaudeElevatedHelper\done\<job>.result.json`.
+4. Also run a machine-scope install: `-Action WingetInstall -PackageId <pkg>`.
+
+**PASS:** each job lands in `done\` with `status=ok`; the captured output shows
+`is_admin=True` and every admin-only op succeeded; the artifacts are visible from a normal
+non-admin shell; the winget install completes cleanly. Clean up the test artifacts with a
+second trusted script.
+**FAIL:** a job hangs (never reaches `done\`), or an admin op didn't take effect.
+
+---
+
 ## Scoring
 
 Kit passes only if Part 1 = all PASS, Part 2 = no friction failures, Part 3 = all bounds

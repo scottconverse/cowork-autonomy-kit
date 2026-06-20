@@ -18,6 +18,19 @@ PowerShell script with highest privileges. Claude remains a normal-user process,
 structured helper requests, and triggers the task. The elevated helper executes only
 supported development actions, writes structured logs, and exits.
 
+## Full elevated capability (verified)
+
+The `RunTrustedPowerShellScript` action runs any PowerShell script located under a trusted
+local root (`C:\dev\`, `~\Documents\Claude\`, `~\.claude\`, the helper temp dir) with full
+administrator rights. So **anything a local admin can do is available with no per-action
+UAC** — machine-scope installs (`WingetInstall`, or `msiexec /i … /qn` from a trusted
+script), `HKLM` edits, service start/stop, firewall rules, etc. Proven on a real machine:
+the helper wrote to `HKLM`, wrote to `C:\Program Files`, created a firewall rule, and
+installed machine-scope packages (7-Zip, fd), each completing cleanly and returning output.
+
+It stays bounded: only scripts under a trusted root run, every job is logged to
+`done\`/`failed\`, and there is no generic "run this arbitrary command string" action.
+
 ## Authorized Helper Uses
 
 - Installing trusted development tools through package managers or local installers.
