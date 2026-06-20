@@ -52,29 +52,40 @@ function Invoke-LoggedProcess {
         [int]$TimeoutSeconds = 1800
     )
 
-    # Redirect to temp files via Start-Process. Reading pipes only after WaitForExit (the
-    # old approach) deadlocks on chatty children like winget: the child fills the OS pipe
-    # buffer, blocks on write, and never exits. File redirection has no such limit.
-    # Start-Process also takes a string[] ArgumentList, so no manual quoting is needed —
-    # and Windows PowerShell 5.1 has no ProcessStartInfo.ArgumentList anyway.
-    $outFile = [System.IO.Path]::GetTempFileName()
-    $errFile = [System.IO.Path]::GetTempFileName()
-    try {
-        $proc = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru `
-            -RedirectStandardOutput $outFile -RedirectStandardError $errFile
-        if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-            try { $proc.Kill() } catch {}
-            throw "Process timed out: $FilePath"
-        }
-        $proc.WaitForExit()
-        return @{
-            exit_code = $proc.ExitCode
-            stdout = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue)
-            stderr = (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue)
-        }
-    } finally {
-        [System.IO.File]::Delete($outFile)
-        [System.IO.File]::Delete($errFile)
+    # Robust child execution. Two traps avoided:
+    #   - Sync ReadToEnd AFTER WaitForExit deadlocks on chatty children (pipe buffer fills).
+    #   - Start-Process -RedirectStandard* to files HANGS when a grandchild inherits the file
+    #     handles (e.g. winget -> msiexec) and keeps them open after the parent exits.
+    # Fix: ProcessStartInfo (PS 5.1 has no ArgumentList, so build the Arguments string) +
+    # ReadToEndAsync to drain both pipes concurrently, and wait on the parent's exit, with a
+    # bounded wait for the async readers so a lingering grandchild can never wedge us.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = (($Arguments | ForEach-Object {
+        if ($_ -match '\s') { '"' + $_ + '"' } else { [string]$_ }
+    }) -join ' ')
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo = $psi
+    [void]$proc.Start()
+    $outTask = $proc.StandardOutput.ReadToEndAsync()
+    $errTask = $proc.StandardError.ReadToEndAsync()
+
+    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+        try { $proc.Kill() } catch {}
+        throw "Process timed out: $FilePath"
+    }
+    [void]$outTask.Wait(5000)
+    [void]$errTask.Wait(5000)
+
+    return @{
+        exit_code = $proc.ExitCode
+        stdout = $(if ($outTask.IsCompleted) { $outTask.Result } else { "" })
+        stderr = $(if ($errTask.IsCompleted) { $errTask.Result } else { "" })
     }
 }
 
@@ -108,14 +119,14 @@ function Invoke-HelperAction {
 
         "WingetInstall" {
             if (-not $Job.packageId) { throw "WingetInstall requires packageId." }
-            $args = @("install", "--id", [string]$Job.packageId, "--exact", "--accept-package-agreements", "--accept-source-agreements")
+            $args = @("install", "--id", [string]$Job.packageId, "--exact", "--silent", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements")
             if ($Job.scope -eq "user") { $args += @("--scope", "user") }
             return Invoke-LoggedProcess -FilePath (Resolve-Winget) -Arguments $args -TimeoutSeconds 3600
         }
 
         "WingetUpgrade" {
             if (-not $Job.packageId) { throw "WingetUpgrade requires packageId." }
-            $args = @("upgrade", "--id", [string]$Job.packageId, "--exact", "--accept-package-agreements", "--accept-source-agreements")
+            $args = @("upgrade", "--id", [string]$Job.packageId, "--exact", "--silent", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements")
             return Invoke-LoggedProcess -FilePath (Resolve-Winget) -Arguments $args -TimeoutSeconds 3600
         }
 

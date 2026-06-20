@@ -59,9 +59,10 @@ first:
 | portable zip → user dir + PATH | no | anything with no installer (Node was done this way) |
 | elevated helper → `msiexec /i … /qn` | **yes (one UAC)** | true machine installs |
 
-Note: `winget` works fine *directly*, but it is unreliable **inside the elevated helper's
-non-interactive Session-0 task** — prefer scoop/zip/`msiexec` for admin installs. This is why
-scoop is the keystone.
+Note: `winget` works both *directly* and **through the elevated helper** (machine-scope, no
+UAC) once the helper's process-runner is fixed (it is, in this kit). User-scope channels are
+still preferred *first* — less friction, reversible, no system change — which is why scoop is
+the keystone. Admin is available and reliable; it's just not the default.
 
 ## How To Apply (manual / detail)
 

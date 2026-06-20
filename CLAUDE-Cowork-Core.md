@@ -25,8 +25,8 @@ managers, Git, containers, WSL, local services, SDKs, subagents, and connected M
 proactively. Install or configure missing routine tooling instead of stopping — on Windows
 prefer no-admin channels: `scoop install`, `uv tool install`/`pip install`, `npm i -g`/`npx`,
 `winget install --scope user`, or a portable zip on PATH. If admin is genuinely needed and you
-are not elevated, use the elevated dev helper (`elevated-dev-helper/`) driving `msiexec` — not
-winget (winget is unreliable in the helper's non-interactive task).
+are not elevated, use the elevated dev helper (`elevated-dev-helper/`) for machine-scope
+installs — `WingetInstall` or `RunTrustedPowerShellScript`/`msiexec`, no per-action UAC.
 
 ## Verify & report
 

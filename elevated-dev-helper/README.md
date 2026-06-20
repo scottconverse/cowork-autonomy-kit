@@ -60,21 +60,29 @@ Copy this folder, review the paths, then perform the same one-time elevated setu
 addendum (`CLAUDE-Elevated-Helper-Addendum.md`) can be appended to that machine's
 `~/.claude/CLAUDE.md`.
 
-## Known limitation — winget in a non-interactive elevated task
+## Process execution (hardened)
 
-`winget` runs poorly inside the helper's Session-0, non-interactive scheduled-task context:
-it can install the package but then fails to cleanly signal exit, so the wait may hang even
-though the install succeeded. This is a winget limitation, not a logic bug in the helper
-(two real helper bugs — `ProcessStartInfo.ArgumentList` under Windows PowerShell 5.1, and a
-stdout/stderr pipe-read deadlock — have been fixed; the remaining flakiness is winget's).
+Every process-launching action (`WingetInstall`/`Upgrade`, `RunTrustedPowerShellScript`)
+goes through one runner. Three real bugs were found and fixed by driving the kit on a real
+machine — all in the scheduled task's Windows PowerShell 5.1 host:
 
-For machine-scope admin installs, prefer one of:
+1. `ProcessStartInfo.ArgumentList` doesn't exist in .NET Framework (PS 5.1) → an immediate
+   null-method crash. Build the `Arguments` string instead.
+2. Reading stdout/stderr only after `WaitForExit` deadlocks on chatty children (winget) —
+   the child fills the pipe buffer and never exits. Drain both pipes with `ReadToEndAsync`
+   concurrently.
+3. `Start-Process -RedirectStandard*` to files **hangs** when a grandchild (winget →
+   msiexec) inherits the file handles and keeps them open after the parent exits. Use
+   `ProcessStartInfo` + a bounded wait on the async readers, so a lingering grandchild can
+   never wedge the helper.
 
-- **User-scope `winget` run directly** (interactive session, no helper) — reliable for most
-  packages: `winget install <id> --scope user`.
-- **A portable/zip install** extracted to a user dir + PATH — no admin at all.
-- **The helper's `RunTrustedPowerShellScript`** action driving `msiexec /i <msi> /qn` — MSI
-  installs run fine non-interactively, unlike winget.
+With those in place, **both** `RunTrustedPowerShellScript` (arbitrary elevated PowerShell)
+and `WingetInstall` (machine-scope, no UAC) complete cleanly and return captured output.
+Verified on a real install: HKLM writes, `C:\Program Files` writes, a firewall rule, and
+machine-scope winget installs (7-Zip, fd) all ran and reported through the helper.
+
+> Earlier kit versions documented winget as "unreliable in a non-interactive task." That was
+> wrong — it was bug #3 above (handle inheritance), not winget. It's fixed.
 
 ## Safety Model
 

@@ -238,11 +238,12 @@ On Windows, prefer no-admin, user-scope channels and reach for admin last:
   semgrep, …). The default; no admin.
 - **`uv tool install <x>` / `uv pip` / `pip install <x>`** — Python tools and libraries.
 - **`npm i -g <x>` / `npx <x>`** — Node tooling.
-- **`winget install <x> --scope user`** — user-scope apps. (`winget` works directly, but is
-  unreliable inside the elevated helper's non-interactive task — don't route it there.)
+- **`winget install <x> --scope user`** — user-scope apps. (`winget` also works *through* the
+  elevated helper for machine-scope installs, no UAC.)
 - **portable zip → user dir + PATH** — anything with no installer.
-- **admin only for true machine installs:** the Elevated Development Helper driving
-  `msiexec /i <msi> /qn`.
+- **admin for true machine installs:** the Elevated Development Helper — `WingetInstall` or
+  `RunTrustedPowerShellScript` driving `msiexec /i <msi> /qn`. Both complete cleanly and
+  return output; no per-action UAC.
 
 Note: the hooks and `python3`-based tooling need a real `python3` on PATH — the Microsoft
 Store stub is not one. `Setup-Autonomy.ps1` in this kit establishes Python + a `python3`
