@@ -1,0 +1,39 @@
+{
+  "//": "Max-autonomy permission profile for Claude Code / Cowork. Matches (and extends) Codex full-access intent.",
+  "//1": "Copy into ~/.claude/settings.json (user-global) or a project .claude/settings.json. Back up the existing file first.",
+  "//2": "bypassPermissions = no prompts. 'ask' and 'deny' are intentionally EMPTY — full autonomy, owner accepts all risk.",
+  "//3": "'allow' is broad but only matters if you ever switch off bypass; under bypassPermissions nothing prompts anyway.",
+
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+
+    "//ask": "Empty by design. Add entries here only if YOU decide a specific action should prompt.",
+    "ask": [],
+
+    "//deny": "Empty by design. Add entries here only if YOU decide a specific action should be hard-blocked.",
+    "deny": [],
+
+    "//additionalDirectories": "Broadens the working scope beyond the launch cwd so file work anywhere on these roots is in-scope.",
+    "additionalDirectories": [
+      "C:\\Users\\Scott",
+      "C:\\dev"
+    ],
+
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash",
+      "PowerShell",
+      "WebFetch",
+      "WebSearch"
+    ]
+  },
+
+  "//enableAllProjectMcpServers": "Auto-approve connected project MCP servers — fewer interruptions.",
+  "enableAllProjectMcpServers": true,
+
+  "includeCoAuthoredBy": true
+}

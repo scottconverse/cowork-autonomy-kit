@@ -1,0 +1,79 @@
+param(
+    [string]$InstallRoot = "C:\dev\ClaudeElevatedHelper",
+    [string]$TaskName = "ClaudeElevatedDevHelper"
+)
+
+$ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+
+function Assert-Admin {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        throw "This installer must be run from an elevated PowerShell session."
+    }
+}
+
+Assert-Admin
+
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$userId = $identity.Name
+
+$source = Join-Path $PSScriptRoot "ClaudeElevatedDevHelper.ps1"
+if (-not (Test-Path -LiteralPath $source)) {
+    throw "Missing helper script: $source"
+}
+
+New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot "queue") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot "done") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot "failed") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot "logs") | Out-Null
+$installLog = Join-Path $InstallRoot "install-log.txt"
+"[$((Get-Date).ToUniversalTime().ToString("o"))] Installer running as $userId; elevated=True" | Add-Content -LiteralPath $installLog -Encoding UTF8
+
+$target = Join-Path $InstallRoot "ClaudeElevatedDevHelper.ps1"
+Copy-Item -LiteralPath $source -Destination $target -Force
+
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$target`" -Root `"$InstallRoot`""
+$principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Highest
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+
+Register-ScheduledTask -TaskName $TaskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+
+@{
+    installed = $true
+    task_name = $TaskName
+    install_root = $InstallRoot
+    helper_script = $target
+    user_id = $userId
+    installed_at = (Get-Date).ToUniversalTime().ToString("o")
+} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $InstallRoot "install-state.json") -Encoding UTF8
+
+$jobId = "install-self-test-" + [guid]::NewGuid().ToString("n")
+$jobPath = Join-Path (Join-Path $InstallRoot "queue") ($jobId + ".json")
+@{
+    action = "CheckAdmin"
+    created_at = (Get-Date).ToUniversalTime().ToString("o")
+    created_by = $userId
+    purpose = "install self-test"
+} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $jobPath -Encoding UTF8
+
+Start-ScheduledTask -TaskName $TaskName
+Start-Sleep -Seconds 3
+
+$resultPath = Join-Path (Join-Path $InstallRoot "done") ($jobId + ".result.json")
+$errorPath = Join-Path (Join-Path $InstallRoot "failed") ($jobId + ".error.json")
+if (Test-Path -LiteralPath $resultPath) {
+    "[$((Get-Date).ToUniversalTime().ToString("o"))] Self-test succeeded: $resultPath" | Add-Content -LiteralPath $installLog -Encoding UTF8
+} elseif (Test-Path -LiteralPath $errorPath) {
+    "[$((Get-Date).ToUniversalTime().ToString("o"))] Self-test failed: $errorPath" | Add-Content -LiteralPath $installLog -Encoding UTF8
+} else {
+    "[$((Get-Date).ToUniversalTime().ToString("o"))] Self-test did not complete within 3 seconds. Check Task Scheduler and helper logs." | Add-Content -LiteralPath $installLog -Encoding UTF8
+}
+
+Write-Host "Installed $TaskName at $InstallRoot for $userId"
+Write-Host "Install log: $installLog"
+if (Test-Path -LiteralPath $resultPath) {
+    Write-Host "Self-test result: $resultPath"
+    Get-Content -LiteralPath $resultPath
+}

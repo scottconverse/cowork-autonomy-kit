@@ -1,0 +1,26 @@
+# Machine-specific / installed config — never commit
+installed-config/
+*.bak
+*.bak-*
+config.toml
+.credentials.json
+
+# Elevated helper runtime state
+elevated-dev-helper/queue/
+elevated-dev-helper/done/
+elevated-dev-helper/failed/
+elevated-dev-helper/logs/
+install-state.json
+install-log.txt
+
+# Test reports
+*-test-report-*.json
+
+# Local/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.log
+.vscode/
+.idea/
