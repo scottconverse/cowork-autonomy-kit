@@ -60,6 +60,22 @@ Copy this folder, review the paths, then perform the same one-time elevated setu
 addendum (`CLAUDE-Elevated-Helper-Addendum.md`) can be appended to that machine's
 `~/.claude/CLAUDE.md`.
 
+## Known limitation — winget in a non-interactive elevated task
+
+`winget` runs poorly inside the helper's Session-0, non-interactive scheduled-task context:
+it can install the package but then fails to cleanly signal exit, so the wait may hang even
+though the install succeeded. This is a winget limitation, not a logic bug in the helper
+(two real helper bugs — `ProcessStartInfo.ArgumentList` under Windows PowerShell 5.1, and a
+stdout/stderr pipe-read deadlock — have been fixed; the remaining flakiness is winget's).
+
+For machine-scope admin installs, prefer one of:
+
+- **User-scope `winget` run directly** (interactive session, no helper) — reliable for most
+  packages: `winget install <id> --scope user`.
+- **A portable/zip install** extracted to a user dir + PATH — no admin at all.
+- **The helper's `RunTrustedPowerShellScript`** action driving `msiexec /i <msi> /qn` — MSI
+  installs run fine non-interactively, unlike winget.
+
 ## Safety Model
 
 The helper accepts only structured jobs and known action names. It logs every job start,

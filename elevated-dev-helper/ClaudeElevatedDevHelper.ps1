@@ -52,30 +52,46 @@ function Invoke-LoggedProcess {
         [int]$TimeoutSeconds = 1800
     )
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $FilePath
-    foreach ($arg in $Arguments) {
-        [void]$psi.ArgumentList.Add($arg)
+    # Redirect to temp files via Start-Process. Reading pipes only after WaitForExit (the
+    # old approach) deadlocks on chatty children like winget: the child fills the OS pipe
+    # buffer, blocks on write, and never exits. File redirection has no such limit.
+    # Start-Process also takes a string[] ArgumentList, so no manual quoting is needed —
+    # and Windows PowerShell 5.1 has no ProcessStartInfo.ArgumentList anyway.
+    $outFile = [System.IO.Path]::GetTempFileName()
+    $errFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $proc = Start-Process -FilePath $FilePath -ArgumentList $Arguments -NoNewWindow -PassThru `
+            -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $proc.Kill() } catch {}
+            throw "Process timed out: $FilePath"
+        }
+        $proc.WaitForExit()
+        return @{
+            exit_code = $proc.ExitCode
+            stdout = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue)
+            stderr = (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue)
+        }
+    } finally {
+        [System.IO.File]::Delete($outFile)
+        [System.IO.File]::Delete($errFile)
     }
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
+}
 
-    $proc = New-Object System.Diagnostics.Process
-    $proc.StartInfo = $psi
-    [void]$proc.Start()
-
-    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-        try { $proc.Kill() } catch {}
-        throw "Process timed out: $FilePath"
+function Resolve-Winget {
+    # The `winget` on PATH is a per-user App Execution Alias (a reparse stub) that does
+    # NOT resolve inside this non-interactive elevated scheduled-task session. Resolve the
+    # real DesktopAppInstaller winget.exe instead.
+    $pkg = Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending | Select-Object -First 1
+    if ($pkg -and $pkg.InstallLocation) {
+        $exe = Join-Path $pkg.InstallLocation "winget.exe"
+        if (Test-Path -LiteralPath $exe) { return $exe }
     }
-
-    return @{
-        exit_code = $proc.ExitCode
-        stdout = $proc.StandardOutput.ReadToEnd()
-        stderr = $proc.StandardError.ReadToEnd()
-    }
+    $glob = Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+    if ($glob) { return $glob.FullName }
+    throw "Could not resolve a real winget.exe (DesktopAppInstaller package not found)."
 }
 
 function Invoke-HelperAction {
@@ -94,13 +110,13 @@ function Invoke-HelperAction {
             if (-not $Job.packageId) { throw "WingetInstall requires packageId." }
             $args = @("install", "--id", [string]$Job.packageId, "--exact", "--accept-package-agreements", "--accept-source-agreements")
             if ($Job.scope -eq "user") { $args += @("--scope", "user") }
-            return Invoke-LoggedProcess -FilePath "winget.exe" -Arguments $args -TimeoutSeconds 3600
+            return Invoke-LoggedProcess -FilePath (Resolve-Winget) -Arguments $args -TimeoutSeconds 3600
         }
 
         "WingetUpgrade" {
             if (-not $Job.packageId) { throw "WingetUpgrade requires packageId." }
             $args = @("upgrade", "--id", [string]$Job.packageId, "--exact", "--accept-package-agreements", "--accept-source-agreements")
-            return Invoke-LoggedProcess -FilePath "winget.exe" -Arguments $args -TimeoutSeconds 3600
+            return Invoke-LoggedProcess -FilePath (Resolve-Winget) -Arguments $args -TimeoutSeconds 3600
         }
 
         "RunTrustedPowerShellScript" {
