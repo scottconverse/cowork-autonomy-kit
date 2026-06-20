@@ -1,0 +1,173 @@
+<#
+.SYNOPSIS
+    One-command toolchain + config bootstrap for the Claude Cowork Autonomy Kit on a fresh
+    Windows machine. Run NON-admin, from inside the kit folder, then restart Cowork.
+
+.DESCRIPTION
+    A clean Cowork/Windows box starts with no real Python (only the Microsoft Store stub),
+    no `python3`, no Node, no user-scope package manager, and `winget` that needs admin for
+    machine installs and is flaky inside non-interactive elevated tasks. This script fixes
+    all of that with user-scope, no-admin installs, in the order that actually works:
+
+      1. Python (winget user-scope) + a real `python3.exe` shim  (hooks call `python3`)
+      2. uv            (astral.sh installer)
+      3. scoop         (the no-admin package-manager keystone)
+      4. node-lts, gh, ripgrep, jq, sqlite   (via scoop)
+      5. Playwright + browsers                (via pip)
+      6. Cowork config: CLAUDE.md (compact core) + full profile + notify hook + settings
+         merge (bypassPermissions). Skipped with -SkipConfig.
+
+    Idempotent: re-running skips anything already present and never duplicates settings
+    entries. Everything is user-scope; the only admin step (the elevated dev helper) is left
+    to its own UAC installer and printed at the end.
+
+.PARAMETER SkipConfig
+    Install the toolchain only; leave ~/.claude/CLAUDE.md and settings.json untouched.
+
+.PARAMETER SkipBrowsers
+    Install the Playwright package but skip the (large) browser download.
+
+.EXAMPLE
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
+#>
+[CmdletBinding()]
+param(
+    [switch]$SkipConfig,
+    [switch]$SkipBrowsers
+)
+
+$ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$kit = $PSScriptRoot
+
+function Step($m) { Write-Host "`n=== $m ===" -ForegroundColor Cyan }
+function Prepend-UserPath($dir) {
+    if (-not $dir -or -not (Test-Path -LiteralPath $dir)) { return }
+    $up = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($up -split ';') -notcontains $dir) {
+        [Environment]::SetEnvironmentVariable('Path', "$dir;$up", 'User')
+    }
+    if (($env:Path -split ';') -notcontains $dir) { $env:Path = "$dir;$env:Path" }
+}
+
+# ---------------------------------------------------------------- 1. Python + python3 shim
+Step "Python (user-scope) + python3 shim"
+$pyExe = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue |
+    Sort-Object FullName -Descending | Select-Object -First 1
+if (-not $pyExe) {
+    winget install -e --id Python.Python.3.12 --scope user `
+        --accept-package-agreements --accept-source-agreements --disable-interactivity
+    $pyExe = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+}
+if ($pyExe) {
+    $pydir = $pyExe.Directory.FullName
+    $py3 = Join-Path $pydir "python3.exe"
+    if (-not (Test-Path -LiteralPath $py3)) { Copy-Item $pyExe.FullName $py3 -Force }  # hooks exec `python3`
+    Prepend-UserPath $pydir
+    Prepend-UserPath (Join-Path $pydir "Scripts")
+    Write-Host "python: $(& $pyExe.FullName --version)"
+} else {
+    Write-Warning "Python not installed automatically; install it and re-run."
+}
+
+# ----------------------------------------------------------------------------------- 2. uv
+Step "uv"
+if (-not (Test-Path "$env:USERPROFILE\.local\bin\uv.exe")) {
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+}
+Prepend-UserPath "$env:USERPROFILE\.local\bin"
+Write-Host "uv: $(& "$env:USERPROFILE\.local\bin\uv.exe" --version 2>&1)"
+
+# --------------------------------------------------------------------------------- 3. scoop
+Step "scoop (no-admin package-manager keystone)"
+if (-not (Test-Path "$env:USERPROFILE\scoop\shims\scoop.ps1")) {
+    Invoke-Expression (Invoke-RestMethod -Uri "https://get.scoop.sh")
+}
+Prepend-UserPath "$env:USERPROFILE\scoop\shims"
+$scoop = "$env:USERPROFILE\scoop\shims\scoop.ps1"
+& $scoop bucket add main *> $null
+
+# --------------------------------------------------------------- 4. core CLI tools via scoop
+Step "core tools via scoop (nodejs-lts, gh, ripgrep, jq, sqlite)"
+# Per-tool so we never duplicate something already installed another way (winget/zip).
+$wanted = [ordered]@{ 'nodejs-lts' = 'node'; 'gh' = 'gh'; 'ripgrep' = 'rg'; 'jq' = 'jq'; 'sqlite' = 'sqlite3' }
+foreach ($pkg in $wanted.Keys) {
+    $cmd = $wanted[$pkg]
+    if (Get-Command $cmd -ErrorAction SilentlyContinue) {
+        Write-Host "$cmd already present - skip"
+    } else {
+        & $scoop install $pkg
+    }
+}
+
+# ---------------------------------------------------------------------------- 5. Playwright
+Step "Playwright + browsers"
+$py3cmd = (Get-Command python3 -ErrorAction SilentlyContinue).Source
+if (-not $py3cmd -and $pyExe) { $py3cmd = Join-Path $pyExe.Directory.FullName "python3.exe" }
+if ($py3cmd) {
+    & $py3cmd -m pip install --quiet --upgrade playwright
+    if (-not $SkipBrowsers) { & $py3cmd -m playwright install }
+    Write-Host "playwright: $(& $py3cmd -m playwright --version 2>&1)"
+}
+
+# ------------------------------------------------------------------------------- 6. config
+if (-not $SkipConfig) {
+    Step "Cowork config (~/.claude)"
+    $cl = "$env:USERPROFILE\.claude"
+    New-Item -ItemType Directory -Force -Path $cl | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $cl "hooks") | Out-Null
+
+    Copy-Item "$kit\CLAUDE-Cowork-Core.md" (Join-Path $cl "CLAUDE.md") -Force
+    Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md" $cl -Force
+    Copy-Item "$kit\hooks\notify-turn-ended.ps1" (Join-Path $cl "hooks") -Force
+    Write-Host "wrote CLAUDE.md, depth profile, notify hook"
+
+    $sp = Join-Path $cl "settings.json"
+    $settings = $null
+    if (Test-Path -LiteralPath $sp) {
+        Copy-Item $sp "$sp.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
+        try { $settings = Get-Content $sp -Raw | ConvertFrom-Json } catch { $settings = $null }
+    }
+    if (-not $settings) { $settings = [pscustomobject]@{} }
+
+    # permissions: bypassPermissions, empty ask/deny (preserve any existing allow)
+    if (-not ($settings.PSObject.Properties.Name -contains 'permissions')) {
+        $settings | Add-Member permissions ([pscustomobject]@{}) -Force
+    }
+    $settings.permissions | Add-Member defaultMode "bypassPermissions" -Force
+    if (-not ($settings.permissions.PSObject.Properties.Name -contains 'ask'))  { $settings.permissions | Add-Member ask  @() -Force }
+    if (-not ($settings.permissions.PSObject.Properties.Name -contains 'deny')) { $settings.permissions | Add-Member deny @() -Force }
+
+    # hooks.Stop -> notify (idempotent: only add if not already wired)
+    $hookCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$cl\hooks\notify-turn-ended.ps1`""
+    if (-not ($settings.PSObject.Properties.Name -contains 'hooks')) {
+        $settings | Add-Member hooks ([pscustomobject]@{}) -Force
+    }
+    $stop = @()
+    if ($settings.hooks.PSObject.Properties.Name -contains 'Stop') { $stop = @($settings.hooks.Stop) }
+    $already = $false
+    foreach ($e in $stop) { foreach ($h in @($e.hooks)) { if ("$($h.command)" -like "*notify-turn-ended*") { $already = $true } } }
+    if (-not $already) {
+        $stop += [pscustomobject]@{ matcher = ""; hooks = @([pscustomobject]@{ type = "command"; command = $hookCmd }) }
+    }
+    $settings.hooks | Add-Member Stop $stop -Force
+
+    ($settings | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $sp -Encoding UTF8
+    Write-Host "merged settings.json (bypassPermissions + notify Stop hook)"
+}
+
+# -------------------------------------------------------------------------------- summary
+Step "Summary"
+$report = [ordered]@{}
+foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','sqlite3') {
+    $src = (Get-Command $t -ErrorAction SilentlyContinue).Source
+    $report[$t] = if ($src) { 'OK' } else { 'missing (open a new shell)' }
+}
+$report.GetEnumerator() | ForEach-Object { "{0,-10} {1}" -f $_.Key, $_.Value } | Write-Host
+
+Write-Host "`nNEXT:" -ForegroundColor Green
+Write-Host "  1. RESTART Cowork/Claude Code so the new PATH, CLAUDE.md, and hooks load."
+Write-Host "  2. (optional, admin) Install the elevated dev helper for system installs:"
+Write-Host "       double-click elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd and approve UAC."
+Write-Host "  3. Install any other tool on demand, no admin, via: scoop install <x> | uv tool install <x> | pip install <x> | npm i -g <x>."

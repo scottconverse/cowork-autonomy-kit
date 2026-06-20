@@ -232,6 +232,22 @@ scripts from untrusted sources. Prefer project-local or isolated methods when pr
 system-level installers (via the Elevated Development Helper when admin is needed) when the
 task reasonably requires them.
 
+On Windows, prefer no-admin, user-scope channels and reach for admin last:
+
+- **`scoop install <x>`** — CLI tools (gh, ripgrep, jq, sqlite, go, rust, dotnet-sdk,
+  semgrep, …). The default; no admin.
+- **`uv tool install <x>` / `uv pip` / `pip install <x>`** — Python tools and libraries.
+- **`npm i -g <x>` / `npx <x>`** — Node tooling.
+- **`winget install <x> --scope user`** — user-scope apps. (`winget` works directly, but is
+  unreliable inside the elevated helper's non-interactive task — don't route it there.)
+- **portable zip → user dir + PATH** — anything with no installer.
+- **admin only for true machine installs:** the Elevated Development Helper driving
+  `msiexec /i <msi> /qn`.
+
+Note: the hooks and `python3`-based tooling need a real `python3` on PATH — the Microsoft
+Store stub is not one. `Setup-Autonomy.ps1` in this kit establishes Python + a `python3`
+shim, uv, scoop, Node, Playwright, and the config in one no-admin pass.
+
 After installation or environment changes, verify with the relevant version/import/build/
 test/service/driver/VM check. If the first path fails, try the next reasonable path before
 giving up. Keep me out of the loop unless the next step requires a human click, login,

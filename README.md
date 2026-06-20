@@ -6,6 +6,9 @@ higher-priority instruction boundaries. Ported from the Codex Desktop Autonomy K
 
 ## Contents
 
+- `Setup-Autonomy.ps1` — **one-command fresh-machine bootstrap.** Installs the whole
+  toolchain (Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright +
+  browsers) and the Cowork config (CLAUDE.md, hooks, settings), all user-scope / no-admin.
 - `CLAUDE-Cowork-Core.md` — compact standing instructions for everyday speed (use as your
   live `~/.claude/CLAUDE.md`).
 - `CLAUDE-Cowork-Autonomous-Software-Development.md` — the full / depth operating profile,
@@ -24,7 +27,43 @@ machines. It authorizes Claude to inspect, edit, install, configure, build, test
 retry, verify, and clean up ordinary development work within higher-priority rules and real
 OS/app boundaries.
 
-## How To Apply
+## Quick start (fresh machine)
+
+From a clean Cowork/Windows box, clone the kit and run the bootstrap (non-admin):
+
+```powershell
+git clone https://github.com/scottconverse/claude-cowork-autonomy-kit.git
+cd claude-cowork-autonomy-kit
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
+# then RESTART Cowork so PATH, CLAUDE.md, and hooks load
+```
+
+That installs the full toolchain and config below, idempotently, with **no admin**. The one
+admin step (the elevated dev helper) stays optional and prints its own UAC installer at the
+end. It exists because a clean box has **no real Python** (only the Store stub), **no
+`python3`**, **no Node**, and **no user-scope package manager** — every gotcha this kit hit
+on a real fresh install is encoded in the script's ordering.
+
+### The no-admin install doctrine (Windows)
+
+Windows autonomy is mostly a package-manager problem. Preference order, highest-autonomy
+first:
+
+| Channel | Admin? | Use for |
+|---|---|---|
+| `scoop install <x>` | no | CLI tools (gh, ripgrep, jq, sqlite, go, rust, dotnet-sdk, semgrep…) — the default |
+| `uv tool install <x>` / `uv pip` | no | Python tools and envs (ruff, etc.) |
+| `pip install <x>` | no | Python libraries (Playwright, …) |
+| `npm i -g <x>` / `npx <x>` | no | Node tooling |
+| `winget install <x> --scope user` | no | user-scope apps (Python, …) |
+| portable zip → user dir + PATH | no | anything with no installer (Node was done this way) |
+| elevated helper → `msiexec /i … /qn` | **yes (one UAC)** | true machine installs |
+
+Note: `winget` works fine *directly*, but it is unreliable **inside the elevated helper's
+non-interactive Session-0 task** — prefer scoop/zip/`msiexec` for admin installs. This is why
+scoop is the keystone.
+
+## How To Apply (manual / detail)
 
 1. **Back up first.** Copy your existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json`
    to timestamped `.bak` files before changing them.

@@ -22,8 +22,11 @@ depth rule at the bottom). Autonomy itself is configured in `.claude/settings.js
 
 Use the terminal (Bash/PowerShell), filesystem, browser/computer-use MCP tools, package
 managers, Git, containers, WSL, local services, SDKs, subagents, and connected MCP servers
-proactively. Install or configure missing routine tooling instead of stopping. If admin is
-needed and you are not elevated, use the elevated dev helper (`elevated-dev-helper/`).
+proactively. Install or configure missing routine tooling instead of stopping — on Windows
+prefer no-admin channels: `scoop install`, `uv tool install`/`pip install`, `npm i -g`/`npx`,
+`winget install --scope user`, or a portable zip on PATH. If admin is genuinely needed and you
+are not elevated, use the elevated dev helper (`elevated-dev-helper/`) driving `msiexec` — not
+winget (winget is unreliable in the helper's non-interactive task).
 
 ## Verify & report
 
