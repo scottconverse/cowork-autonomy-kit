@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.1.2 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.2.0 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
@@ -111,6 +111,44 @@ The profile's governing line, mirrored from the Codex setup it was ported from:
 The hybrid two-tier instruction design (compact core + depth rule), the backup-before-install
 step, and the requested-vs-unrequested operating line are all adopted from the installed
 Codex hybrid configuration.
+
+## Computer-use authorization (why it still prompts)
+
+There are **two** permission systems, and this kit only governs one:
+
+1. **Claude Code tool permissions** (Bash, PowerShell, file edits) — governed by
+   `bypassPermissions`. These never prompt. ✔ handled by the kit.
+2. **Computer-use** (`mcp__computer-use__*`: screenshots, clicking, controlling native apps) —
+   governed by its **own** `request_access` dialog, **one per session**. ✘ **not** governed by
+   `bypassPermissions`, and **cannot** be made standing by any local config.
+
+This was investigated directly against the desktop app (Claude `1.14271.0.0`, claude-code
+`2.1.181`) — see the full writeup with code citations: *computer-use-standing-consent findings*.
+Summary of why it is unfixable from config:
+
+- `request_access` enters the desktop app's permission broker as the pseudo-tool
+  `computer:request_access`. That tool family (`computer:` / `browser:` / `webfetch:`) is
+  **special-cased to always open an interactive dialog**, in a branch that returns **before** any
+  `bypassPermissions` / allow-rule / cached-decision is consulted.
+- Promotion to a standing "always allow" rule is **explicitly stripped** — the code logs
+  `always-allow suppressed` for exactly these tools.
+- Grants live only on the **session** (`cuAllowedApps`), start empty on every new session, and
+  even **expire after 30 min** within a long session. There is **no global allow-list store** on
+  disk to pre-seed (verified across Local Storage, IndexedDB, and all `%APPDATA%\Claude` config).
+- This is an intentional human-in-the-loop boundary for the three tool families that act on the
+  world outside the sandbox (native apps, the live browser, arbitrary URLs). The kit does **not**
+  attempt to defeat it.
+
+**Lowest-friction workflow:** on first desktop need in a session, call `request_access` **once**
+with the *full* app set you'll touch (e.g. `Claude`, `Google Chrome`, `File Explorer`, + the task
+app) and the clipboard/system-key flags you need — one approval covers the set; re-request after
+~30 min or on an "not in allowlist" error. For unattended runs, a **scheduled task / routine** can
+carry pre-approved `computer:request_access` in its `approvedPermissions` (the only standing path
+the app exposes — per-task, not machine-wide). Prefer Bash/PowerShell and the Chrome MCP where they
+suffice; neither carries the computer-use prompt.
+
+`Setup-Autonomy.ps1` prints this same note during the config step so it isn't rediscovered the
+hard way.
 
 ## Safety Notes
 

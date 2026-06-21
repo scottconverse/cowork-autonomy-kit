@@ -2,6 +2,24 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.2.0 — 2026-06-21
+
+### Docs / investigation
+- **Computer-use standing-consent finding (HONEST NEGATIVE).** Investigated whether the
+  per-session `request_access` computer-use prompt can be made standing like `bypassPermissions`.
+  It **cannot** from any local config — verified against the desktop app bundle (Claude
+  `1.14271.0.0`, claude-code `2.1.181`). The `computer:` / `browser:` / `webfetch:` tool families
+  are special-cased in the permission broker to **always** open an interactive dialog (in a branch
+  that returns before any bypass/allow-rule check), standing-rule promotion is **explicitly
+  stripped** (`always-allow suppressed`), grants are session-scoped (`cuAllowedApps`, start empty,
+  30-min TTL), and there is **no on-disk allow-list to pre-seed** (checked Local Storage,
+  IndexedDB, Session Storage, and all `%APPDATA%\Claude` config). This is an intentional
+  human-in-the-loop boundary; the kit does not attempt to defeat it.
+- README: new **"Computer-use authorization (why it still prompts)"** section documenting the gate
+  and the lowest-friction workflow (batch one `request_access` for the full app set; scheduled
+  tasks as the only per-task standing path).
+- `Setup-Autonomy.ps1`: config step now prints the computer-use note so it isn't rediscovered.
+
 ## v1.1.2 — 2026-06-20
 
 ### Docs

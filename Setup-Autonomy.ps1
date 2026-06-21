@@ -155,6 +155,21 @@ if (-not $SkipConfig) {
 
     ($settings | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $sp -Encoding UTF8
     Write-Host "merged settings.json (bypassPermissions + notify Stop hook)"
+
+    # --- Computer-use authorization note (NOT a settings change; documented gate) ---
+    # bypassPermissions governs Claude Code tool permissions (Bash/PowerShell/file edits) only.
+    # The computer-use MCP (mcp__computer-use__*) has a SEPARATE per-session `request_access`
+    # dialog that bypassPermissions does NOT affect and that NO local config can make standing:
+    # the desktop app special-cases the `computer:` / `browser:` / `webfetch:` tools to always
+    # prompt and explicitly strips any always-allow rule ("always-allow suppressed"). Grants are
+    # session-scoped (cuAllowedApps), start empty, and expire after ~30 min. Verified against the
+    # app bundle; this is an intentional human-in-the-loop boundary, not a fixable setting.
+    Write-Host ""
+    Write-Host "NOTE: computer-use ('Allow Claude to control <apps>?') still prompts once per" -ForegroundColor Yellow
+    Write-Host "      session. That gate is app-enforced and NOT controlled by bypassPermissions;" -ForegroundColor Yellow
+    Write-Host "      it cannot be pre-seeded from config. Lowest friction: on first desktop need," -ForegroundColor Yellow
+    Write-Host "      call request_access ONCE with the full app set you'll use. See README" -ForegroundColor Yellow
+    Write-Host "      'Computer-use authorization (why it still prompts)'." -ForegroundColor Yellow
 }
 
 # -------------------------------------------------------------------------------- summary
