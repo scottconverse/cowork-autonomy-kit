@@ -19,6 +19,9 @@ All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
   and the lowest-friction workflow (batch one `request_access` for the full app set; scheduled
   tasks as the only per-task standing path).
 - `Setup-Autonomy.ps1`: config step now prints the computer-use note so it isn't rediscovered.
+- `CLAUDE-Cowork-Autonomous-Software-Development.md` (depth profile): added a one-line caveat in
+  the browser/computer-use section that the per-session `request_access` gate is app-enforced and
+  not covered by `bypassPermissions`, with the batch-one-request guidance.
 
 ## v1.1.2 — 2026-06-20
 

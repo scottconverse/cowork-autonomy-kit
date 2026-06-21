@@ -262,6 +262,11 @@ verification, visual QA, and end-to-end workflow checks — through the connecte
 (computer-use, Claude-in-Chrome, preview tools); prefer the most specific tool for the
 surface.
 
+Computer-use has its own per-session `request_access` gate that `bypassPermissions` does **not**
+cover and that no local config can make standing (app-enforced; see the README section
+"Computer-use authorization"). When the desktop is needed, call `request_access` **once** with the
+full app set you expect to touch rather than trickling one app at a time.
+
 For frontend work, verify the running UI when practical: routes load, controls are wired,
 console errors understood, responsive layouts usable, behavior matches the request. For
 container/VM/WSL/emulator/database tasks, install and configure required host and guest
