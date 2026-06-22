@@ -13,9 +13,9 @@
     "//deny": "Empty by design. Add entries here only if YOU decide a specific action should be hard-blocked.",
     "deny": [],
 
-    "//additionalDirectories": "Broadens the working scope beyond the launch cwd so file work anywhere on these roots is in-scope.",
+    "//additionalDirectories": "Broadens the working scope beyond the launch cwd. EDIT THESE to your own roots — the entries below are placeholders, NOT real paths. Replace YOUR_USERNAME with your Windows account name (or remove the entry). Setup-Autonomy.ps1 does not write this list, so set it yourself if you want it.",
     "additionalDirectories": [
-      "C:\\Users\\Scott",
+      "C:\\Users\\YOUR_USERNAME",
       "C:\\dev"
     ],
 

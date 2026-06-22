@@ -2,6 +2,20 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.2.1 — 2026-06-21
+
+### Fixed (portability — no hardcoded paths)
+- Removed machine-specific hardcoded paths from shipped files so the kit installs and runs on
+  any machine:
+  - `elevated-dev-helper/ClaudeElevatedDevHelper.ps1`: trusted roots now resolve the running
+    user's profile via `$env:USERPROFILE` instead of assuming `C:\Users\<name>`.
+  - `hooks/hooks.example.json`: the notify Stop-hook command now resolves the home directory at
+    runtime via `$env:USERPROFILE` (was a hardcoded `C:\Users\Scott\...` path).
+  - `settings.autonomy.example.json`: `additionalDirectories` no longer ships a real user path;
+    it uses a clearly-marked `YOUR_USERNAME` placeholder with edit instructions.
+- The installer (`Setup-Autonomy.ps1`) was already path-portable (derives everything from
+  `$env:USERPROFILE`); this release brings the examples/helper in line.
+
 ## v1.2.0 — 2026-06-21
 
 ### Docs / investigation

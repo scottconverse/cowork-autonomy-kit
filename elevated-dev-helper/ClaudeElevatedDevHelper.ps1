@@ -31,11 +31,13 @@ function Assert-Admin {
 function Assert-TrustedPath {
     param([string]$Path)
     $resolved = [System.IO.Path]::GetFullPath($Path)
+    # Portable: resolve the running user's actual profile (handles non-default profile
+    # locations) instead of assuming C:\Users\<name>. C:\dev is the helper's own root.
     $trustedRoots = @(
         "C:\dev\",
-        "C:\Users\$env:USERNAME\Documents\Claude\",
-        "C:\Users\$env:USERNAME\.claude\",
-        "C:\Users\$env:USERNAME\AppData\Local\Temp\ClaudeElevatedHelper\"
+        "$env:USERPROFILE\Documents\Claude\",
+        "$env:USERPROFILE\.claude\",
+        "$env:USERPROFILE\AppData\Local\Temp\ClaudeElevatedHelper\"
     )
     foreach ($root in $trustedRoots) {
         if ($resolved.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
