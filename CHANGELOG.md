@@ -16,6 +16,24 @@ All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 - The installer (`Setup-Autonomy.ps1`) was already path-portable (derives everything from
   `$env:USERPROFILE`); this release brings the examples/helper in line.
 
+### Fixed (GauntletGate full-lane findings, pre-push)
+- **`hooks/hooks.example.json` notify command was broken.** The first portability attempt used
+  `-Command "& '$env:USERPROFILE\...'"` — single quotes mean `$env:USERPROFILE` never expands, so
+  the hook errored every turn. Replaced with a clearly-marked `<YOUR-HOME>` placeholder in the
+  proven `-File "<abs>"` form (the installer still wires the real absolute path automatically).
+- **Added `tests/Test-NoHardcodedPaths.ps1`** — a portability regression guard that fails if any
+  shipped file reintroduces a literal `C:\Users\<account>` path (matches both `.ps1` single- and
+  JSON double-backslash forms; placeholders + CHANGELOG history exempt). Closes the gap where the
+  release's headline property had no test.
+- **README step 3 corrected** to state what the installer actually writes (only
+  `bypassPermissions` + the Stop hook; it preserves existing `ask`/`deny`) vs. the
+  optional manual example, and that `additionalDirectories` ships an edit-me placeholder.
+- **`Setup-Autonomy.ps1` now backs up an existing `~/.claude/CLAUDE.md`** before overwriting it
+  (it already backed up `settings.json`; CLAUDE.md was being clobbered with no backup).
+- **Elevated-helper addendum: honest blast-radius.** Documented that the user-writable trusted
+  roots make `RunTrustedPowerShellScript` a no-UAC local-admin path for any code at the user's
+  integrity level — it is an accepted single-owner trade-off, not a sandbox.
+
 ## v1.2.0 — 2026-06-21
 
 ### Docs / investigation

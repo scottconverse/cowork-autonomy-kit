@@ -118,7 +118,13 @@ if (-not $SkipConfig) {
     New-Item -ItemType Directory -Force -Path $cl | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $cl "hooks") | Out-Null
 
-    Copy-Item "$kit\CLAUDE-Cowork-Core.md" (Join-Path $cl "CLAUDE.md") -Force
+    # Back up an existing CLAUDE.md before we overwrite it (don't silently clobber the user's).
+    $claudeMd = Join-Path $cl "CLAUDE.md"
+    if (Test-Path -LiteralPath $claudeMd) {
+        Copy-Item $claudeMd "$claudeMd.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
+        Write-Host "backed up existing CLAUDE.md"
+    }
+    Copy-Item "$kit\CLAUDE-Cowork-Core.md" $claudeMd -Force
     Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md" $cl -Force
     Copy-Item "$kit\hooks\notify-turn-ended.ps1" (Join-Path $cl "hooks") -Force
     Write-Host "wrote CLAUDE.md, depth profile, notify hook"

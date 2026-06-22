@@ -28,8 +28,16 @@ script), `HKLM` edits, service start/stop, firewall rules, etc. Proven on a real
 the helper wrote to `HKLM`, wrote to `C:\Program Files`, created a firewall rule, and
 installed machine-scope packages (7-Zip, fd), each completing cleanly and returning output.
 
-It stays bounded: only scripts under a trusted root run, every job is logged to
-`done\`/`failed\`, and there is no generic "run this arbitrary command string" action.
+It is bounded only in *form*, not in power: only scripts under a trusted root run, every job
+is logged to `done\`/`failed\`, and there is no generic "run this arbitrary command string"
+action. **Be honest about the real blast radius, though:** the trusted roots
+(`C:\dev\`, `~\.claude\`, …) are writable by the normal (non-admin) user, and
+`RunTrustedPowerShellScript` runs *arbitrary* PowerShell from them at full admin with **no
+UAC**. So while this task exists, **any code running at your user integrity level — not just
+Claude — can drop a script into a trusted root and obtain silent local admin.** That is an
+accepted trade-off for a single-owner personal dev box; it is **not** a sandbox. To harden,
+require Authenticode-signed trusted scripts or move the trusted root to an admin-only-writable,
+ACL-locked directory so a non-admin writer cannot plant payloads.
 
 ## Authorized Helper Uses
 

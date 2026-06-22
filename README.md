@@ -75,11 +75,14 @@ the keystone. Admin is available and reliable; it's just not the default.
    everyday speed. Its depth rule points Claude to the full
    `CLAUDE-Cowork-Autonomous-Software-Development.md` for high-blast-radius work — keep that
    file in the kit (or alongside CLAUDE.md) so it can be loaded on demand.
-3. **Permissions/autonomy:** merge `settings.autonomy.example.json` into
-   `~/.claude/settings.json`. It defaults to `bypassPermissions` with **empty `ask` and
-   `deny` lists** — no prompts, no gates, full autonomy. It also sets
-   `enableAllProjectMcpServers: true` and broad `additionalDirectories`. If you ever want to
-   gate or block a specific command, add it to `ask` or `deny` yourself.
+3. **Permissions/autonomy:** `Setup-Autonomy.ps1` writes only `defaultMode: bypassPermissions`
+   (plus empty `ask`/`deny` if they're absent) and the notify Stop hook. It does **not** set
+   `additionalDirectories`, `allow`, or `enableAllProjectMcpServers`. Those live in
+   `settings.autonomy.example.json` for **optional manual** merge — it shows the full profile, but
+   its `additionalDirectories` ships a `YOUR_USERNAME` **placeholder you must edit** (replace with
+   your account name, or remove the entry); pasted verbatim it's a no-op, not a real grant. Note:
+   on a box that already has `ask`/`deny` entries the installer **preserves** them (it doesn't
+   force them empty). If you want to gate or block a specific command, add it to `ask`/`deny` yourself.
 4. **Elevated helper (optional):** see `elevated-dev-helper/README.md` for the one-time
    UAC-approved install.
 5. **Notifications (optional):** wire `hooks/hooks.example.json` into settings to get a
