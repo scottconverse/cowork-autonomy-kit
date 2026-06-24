@@ -3,6 +3,24 @@
 A reusable Windows helper pattern for machines where Claude Code / Cowork runs as a normal
 (non-admin) process and cannot launch its shell with an administrator token.
 
+## Why inline elevation is impossible (read this first)
+
+This helper exists because of a hard Windows constraint, not a setup gap. When Cowork is the
+host, **the Claude desktop app is a packaged MSIX app** (it lives under
+`C:\Program Files\WindowsApps\Claude_…`, confirmed via `Get-AppxPackage -Name *Claude*`).
+Windows **fundamentally prohibits packaged (MSIX/Store) apps from running elevated** — there
+is no "Run as administrator", no scheduled-task launcher, and no registry switch that gives a
+packaged app's in-process shell an administrator token. The one global override that could
+change integrity, disabling UAC (`EnableLUA=0`), **breaks packaged apps entirely** (they will
+not launch). So no skill, prompt, profile, or one-time setup can make the Cowork inline
+Bash/PowerShell shell elevated. **Do not promise "relaunch elevated" — it cannot work for a
+packaged-app host.**
+
+The *only* path to a genuinely elevated inline Claude shell is the **non-packaged Claude Code
+CLI** (`%AppData%\Roaming\Claude\claude-code\…\claude.exe`) started from an elevated context —
+i.e. the terminal CLI, not the Cowork GUI. For owners who use Cowork exclusively, this
+scheduled-task helper is therefore the **correct and only** admin bridge.
+
 ## What It Does
 
 - Installs a Windows Scheduled Task named `ClaudeElevatedDevHelper`.
@@ -13,7 +31,9 @@ A reusable Windows helper pattern for machines where Claude Code / Cowork runs a
 The helper is agent-agnostic — it does not call or depend on Claude. It is a bounded,
 file-queue-driven elevation bridge that Claude is *authorized* (in the profile) to drive when
 admin is genuinely needed. Unlike Codex, which can run an elevated in-process sandbox, Claude
-Code runs at your normal user token — so this helper is the primary path to admin actions.
+Code under the packaged Cowork host runs at a Medium-integrity user token that **cannot** be
+elevated in place (see "Why inline elevation is impossible" above) — so this helper is the
+primary path to admin actions.
 
 ## What It Does Not Do
 

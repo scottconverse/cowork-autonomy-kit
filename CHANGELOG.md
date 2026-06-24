@@ -2,6 +2,25 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.2.2 — 2026-06-24
+
+### Fixed (docs — name the real root cause of non-elevation)
+- The elevated-helper docs previously implied Claude Code merely "runs as a normal process
+  and cannot launch its shell with an admin token," which read like a one-time-setup gap that
+  the right configuration could close. It cannot. Clarified the actual, hard constraint:
+  - `elevated-dev-helper/README.md`: added a **"Why inline elevation is impossible"** section.
+    Under the Cowork host the Claude desktop app is a **packaged MSIX app**
+    (`C:\Program Files\WindowsApps\Claude_…`, verifiable via `Get-AppxPackage -Name *Claude*`),
+    and Windows **never** runs packaged apps elevated — no "Run as administrator", no
+    scheduled-task launcher, no registry switch; disabling UAC (`EnableLUA=0`) breaks packaged
+    apps outright. So no skill/prompt/profile can elevate the inline shell, and the helper is
+    the **only** admin bridge (the lone exception being the non-packaged Claude Code CLI run
+    elevated — the terminal, not Cowork).
+  - `elevated-dev-helper/CLAUDE-Elevated-Helper-Addendum.md`: same clarification in *Purpose*;
+    explicit instruction never to advise "relaunch elevated" for a packaged-app host.
+- No behavior change; the helper was already correct. This release makes the docs honest about
+  *why* it is necessary rather than optional.
+
 ## v1.2.1 — 2026-06-21
 
 ### Fixed (portability — no hardcoded paths)

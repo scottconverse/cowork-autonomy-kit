@@ -8,8 +8,12 @@ Cowork cannot reliably launch with an elevated/admin shell token. Append it to
 
 Claude is authorized to use a local elevated development helper when one has been installed by
 the machine owner. The helper bridges Windows UAC/admin-token limitations for ordinary,
-reversible software-development infrastructure tasks. Because Claude Code runs at your normal
-user token (no elevated sandbox), this helper is the primary admin path.
+reversible software-development infrastructure tasks. Under the Cowork host, Claude Code runs
+inside a **packaged MSIX app**, which Windows **never** lets run elevated — so the inline
+shell's Medium-integrity token cannot be raised by any setup, and this helper is not a
+fallback but the **only** admin path. (The lone exception is the non-packaged Claude Code CLI
+run elevated, which is the terminal, not Cowork.) Do not advise "relaunch elevated" for a
+packaged-app host; it is impossible.
 
 ## Helper Model
 
