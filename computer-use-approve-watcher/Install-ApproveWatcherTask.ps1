@@ -1,14 +1,17 @@
 # Install-ApproveWatcherTask.ps1
 # Registers a user-scope scheduled task that runs the watcher at every logon. No admin.
 
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $TaskName = 'ClaudeApproveWatcher',
     [switch] $Uninstall
 )
 
 if ($Uninstall) {
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-    Write-Host "Removed scheduled task '$TaskName'."
+    if ($PSCmdlet.ShouldProcess($TaskName, "Unregister-ScheduledTask")) {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+        Write-Host "Removed scheduled task '$TaskName'."
+    }
     return
 }
 
@@ -22,9 +25,11 @@ $set     = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoin
     -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
 $prin    = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-    -Settings $set -Principal $prin -Force | Out-Null
+if ($PSCmdlet.ShouldProcess($TaskName, "Register-ScheduledTask (logon trigger)")) {
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
+        -Settings $set -Principal $prin -Force | Out-Null
 
-Write-Host "Installed '$TaskName' -- runs $script at every logon."
-Write-Host "Start now:    Start-ScheduledTask -TaskName $TaskName"
-Write-Host "Uninstall:    powershell -File `"$PSCommandPath`" -Uninstall"
+    Write-Host "Installed '$TaskName' -- runs $script at every logon."
+    Write-Host "Start now:    Start-ScheduledTask -TaskName $TaskName"
+    Write-Host "Uninstall:    powershell -File `"$PSCommandPath`" -Uninstall"
+}

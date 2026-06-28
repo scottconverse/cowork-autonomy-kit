@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.3.3 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.4.0 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
@@ -27,8 +27,8 @@ higher-priority instruction boundaries.
 - `tests/` — `Test-AutonomyKit.ps1` capability harness + `TEST-PLAN.md`.
 - `hooks/` — desktop-notification parity with Codex's `notify` hook.
 - `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
-  browser / webfetch `Approve` dialog; includes a `routine-approve.example.json` template
-  for headless runs. See [its README](computer-use-approve-watcher/README.md).
+  browser / webfetch `Approve` dialog; includes a `routine-approve.template.json` (schema
+  not end-to-end verified) for headless runs. See [its README](computer-use-approve-watcher/README.md).
 
 ## Intended Use
 
@@ -75,6 +75,10 @@ still preferred *first* — less friction, reversible, no system change — whic
 the keystone. Admin is available and reliable; it's just not the default.
 
 ## How To Apply (manual / detail)
+
+> The Quick Start above (`Setup-Autonomy.ps1`) does everything below automatically and
+> idempotently. This section explains the same flow step-by-step for anyone who wants to
+> apply the kit by hand, or to understand exactly what Setup did.
 
 1. **Back up first.** Copy your existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json`
    to timestamped `.bak` files before changing them.
@@ -142,8 +146,8 @@ Handled by [`computer-use-approve-watcher/`](computer-use-approve-watcher/README
 `Setup-Autonomy.ps1` installs and starts. The watcher polls UI Automation and clicks
 `Approve` automatically — the same button serves the `computer:`, `browser:`, and
 `webfetch:` permission-broker dialogs. Stop with `Uninstall-Autonomy.ps1` or
-`Stop-ScheduledTask -TaskName ClaudeApproveWatcher`. Headless alternative:
-[`routine-approve.example.json`](computer-use-approve-watcher/routine-approve.example.json).
+`Stop-ScheduledTask -TaskName ClaudeApproveWatcher`. Headless alternative (schema not
+end-to-end verified): [`routine-approve.template.json`](computer-use-approve-watcher/routine-approve.template.json).
 
 ### Reference: how the gate behaves (verified against Claude `1.14271.0.0`, claude-code `2.1.181`)
 

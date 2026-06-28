@@ -20,6 +20,9 @@ $invokePat  = [System.Windows.Automation.InvokePattern]::Pattern
 
 Write-Host "Watching for '$TargetLabel' button (procs: $($TargetProcs -join ',')). Ctrl+C to stop."
 
+# ponytail: 500ms tree-walk poll. Switch to UIA AddAutomationEventHandler (event-driven,
+# no polling) if CPU becomes a concern under heavy Claude driving. The polling version
+# is simpler and has measured-negligible idle cost; upgrade only when needed.
 while ($true) {
     $cond = New-Object System.Windows.Automation.AndCondition `
         ((New-Object System.Windows.Automation.PropertyCondition $ctrlProp, $buttonCtrl), `

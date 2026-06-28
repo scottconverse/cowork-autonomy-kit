@@ -119,7 +119,14 @@ Step "Playwright + browsers"
 $py3cmd = (Get-Command python3 -ErrorAction SilentlyContinue).Source
 if (-not $py3cmd -and $pyExe) { $py3cmd = Join-Path $pyExe.Directory.FullName "python3.exe" }
 if ($py3cmd) {
-    & $py3cmd -m pip install --quiet --upgrade playwright
+    # Idempotent: only install if absent; do NOT auto-upgrade on every Setup re-run.
+    $pwInstalled = & $py3cmd -m pip show playwright 2>$null
+    if (-not $pwInstalled) {
+        & $py3cmd -m pip install --quiet playwright
+        Write-Host "playwright: installed"
+    } else {
+        Write-Host "playwright already present - skip pip install"
+    }
     if (-not $SkipBrowsers) { & $py3cmd -m playwright install }
     Write-Host "playwright: $(& $py3cmd -m playwright --version 2>&1)"
 }
@@ -201,8 +208,12 @@ if (-not $SkipConfig) {
         }
     }
 
-    ($settings | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $sp -Encoding UTF8
-    Write-Host "merged settings.json (bypassPermissions + notify Stop hook)"
+    # Write UTF-8 WITHOUT BOM. PS 5.1's `Set-Content -Encoding UTF8` prepends a BOM,
+    # which breaks naive JSON consumers (python json.loads, etc.). See user memory
+    # feedback-powershell-utf8-bom-trap.md.
+    $json = $settings | ConvertTo-Json -Depth 20
+    [System.IO.File]::WriteAllText($sp, $json, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "merged settings.json (bypassPermissions + notify Stop hook; UTF-8 no BOM)"
 }
 
 # ----------------------------------------------------------- 7. computer-use approve watcher
@@ -249,5 +260,6 @@ $report.GetEnumerator() | ForEach-Object { "{0,-10} {1}" -f $_.Key, $_.Value } |
 
 Write-Host "`nNEXT:" -ForegroundColor Green
 Write-Host "  1. RESTART Cowork/Claude Code so the new PATH, CLAUDE.md, and hooks load."
-Write-Host "  2. Inventory check anytime:  powershell -File .\Doctor-Autonomy.ps1"
+Write-Host "  2. Inventory check anytime, from the kit dir:"
+Write-Host "       powershell -NoProfile -ExecutionPolicy Bypass -File `"$kit\Doctor-Autonomy.ps1`""
 Write-Host "  3. Install any other tool on demand, no admin, via: scoop install <x> | uv tool install <x> | pip install <x> | npm i -g <x>."

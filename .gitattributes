@@ -1,0 +1,22 @@
+# Windows scripts should always have CRLF endings (PowerShell tolerates LF, but
+# editors and signing pipelines on Windows expect CRLF).
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.psd1  text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Cross-platform text files: keep LF.
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+
+# Binary safety net.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary

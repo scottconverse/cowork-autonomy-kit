@@ -53,7 +53,8 @@ Moved the kit directory? Re-run the installer — the task points at the script'
 ## Headless alternative
 
 For fully unattended runs with no desktop session, see
-[`routine-approve.example.json`](routine-approve.example.json) — a Claude Code routine /
+[`routine-approve.template.json`](routine-approve.template.json) — a Claude Code routine /
 scheduled-task template that carries `computer:` / `browser:` / `webfetch:` pre-approval
-in its own `approvedPermissions` array. The watcher and routines coexist; pick whichever
-fits the run.
+in its own `approvedPermissions` array. **Schema not end-to-end verified — confirm against
+your Claude Code routines version before relying on it.** The watcher and routines coexist;
+pick whichever fits the run.

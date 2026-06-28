@@ -110,24 +110,30 @@ try {
     Add-Result "elevated_helper_installed" "INFO" $(if ($helper) { "installed" } else { "not installed (optional)" })
 } catch { Add-Result "elevated_helper_installed" "INFO" $_.Exception.Message }
 
-# 12. Approve-watcher task registered
+# 12. Approve-watcher task registered (INFO if absent -- this harness is intended to run
+#     pre- AND post-Setup; absence is "not installed yet", not "broken").
 try {
     $w = Get-ScheduledTask -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
     if ($w) {
         $state = $w.State
         Add-Result "approve_watcher_task" $(if ($state -in 'Ready','Running') { "PASS" } else { "FAIL" }) "state=$state"
     } else {
-        Add-Result "approve_watcher_task" "FAIL" "task ClaudeApproveWatcher not found (run Setup-Autonomy.ps1)"
+        Add-Result "approve_watcher_task" "INFO" "not installed (run Setup-Autonomy.ps1 to register)"
     }
-} catch { Add-Result "approve_watcher_task" "FAIL" $_.Exception.Message }
+} catch { Add-Result "approve_watcher_task" "INFO" $_.Exception.Message }
 
-# 13. Approve-watcher process alive (the task runs a powershell.exe with the watcher script)
+# 13. Approve-watcher process alive (only meaningful if the task is installed; INFO otherwise)
 try {
     $alive = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
         Where-Object { $_.CommandLine -match 'Watch-ComputerUseApprove' }
-    Add-Result "approve_watcher_process" $(if ($alive) { "PASS" } else { "FAIL" }) `
-        $(if ($alive) { "PID(s): $(($alive.ProcessId) -join ',')" } else { "no powershell.exe running Watch-ComputerUseApprove" })
-} catch { Add-Result "approve_watcher_process" "FAIL" $_.Exception.Message }
+    if ($alive) {
+        Add-Result "approve_watcher_process" "PASS" "PID(s): $(($alive.ProcessId) -join ',')"
+    } elseif ($w) {
+        Add-Result "approve_watcher_process" "FAIL" "task installed but no powershell.exe running Watch-ComputerUseApprove (Start-ScheduledTask?)"
+    } else {
+        Add-Result "approve_watcher_process" "INFO" "n/a -- watcher task not installed"
+    }
+} catch { Add-Result "approve_watcher_process" "INFO" $_.Exception.Message }
 
 # 14. UI Automation assemblies load (the watcher's hard dependency)
 try {
@@ -153,7 +159,8 @@ $info = ($results | Where-Object { $_.Status -eq "INFO" }).Count
 Write-Host ("SUMMARY: {0} PASS / {1} FAIL / {2} INFO" -f $pass, $fail, $info)
 
 $report = Join-Path $env:TEMP ("autonomy-kit-test-report-" + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".json")
-$results | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $report -Encoding UTF8
+# UTF-8 NO BOM (PS 5.1's -Encoding UTF8 prepends BOM that breaks naive JSON readers).
+[System.IO.File]::WriteAllText($report, ($results | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))
 Write-Host "Report: $report"
 
 if ($fail -gt 0) { exit 1 } else { exit 0 }

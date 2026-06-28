@@ -2,6 +2,57 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.4.0 — 2026-06-28
+
+Cleared every finding from the v1.3.3 GauntletGate lite audit.
+
+### Fixed (Major)
+- `Setup-Autonomy.ps1` now writes `settings.json` UTF-8 **without BOM** via
+  `[System.IO.File]::WriteAllText` + `UTF8Encoding($false)`. The previous
+  `Set-Content -Encoding UTF8` prepended a BOM (PS 5.1 behavior) that breaks
+  naive JSON consumers (python `json.loads`, many CI tools). Same fix applied
+  to the JSON report `tests/Test-AutonomyKit.ps1` writes.
+- `routine-approve.example.json` renamed to `routine-approve.template.json`
+  with an honest header: the schema (`name`/`schedule`/`prompt`/`approvedPermissions`)
+  was authored from documentation patterns but **not end-to-end verified** against
+  an actual successful routine execution. Users must validate before relying on it.
+
+### Added
+- `tests/Test-NoBOM.ps1` — portability guard that scans all kit `.json` files and
+  the live `~/.claude/settings.json` for UTF-8 BOM (`EF BB BF`); exit 1 on
+  regression. Protects the BOM-free fix above.
+- `.gitattributes` — `*.ps1`/`*.cmd` → CRLF, `*.md`/`*.json`/`*.toml`/`*.yml` →
+  LF, common binaries marked. Stops the per-commit CRLF noise.
+
+### Changed
+- `Setup-Autonomy.ps1` step 5 no longer auto-upgrades Playwright on every re-run.
+  It checks `pip show playwright` first and only `pip install`s on absence.
+- `Setup-Autonomy.ps1` NEXT block now prints the absolute path to `Doctor-Autonomy.ps1`
+  instead of `.\Doctor-Autonomy.ps1` (worked from the kit dir, confused from elsewhere).
+- `Doctor-Autonomy.ps1` reports user-customized live files as
+  `present, customized (...; staged copy: ...b) -- diff if you want to compare`
+  instead of the alarming `DIFFERS from staged -- merge if you want kit updates`.
+  Customizing a live file is the intended re-run-safe behavior, not a problem.
+- `tests/Test-AutonomyKit.ps1` checks 12-13 (approve-watcher task + process) now
+  return `INFO` when the watcher isn't installed yet, only `FAIL` if the task is
+  registered but the process isn't running. The harness is intended to run pre-
+  AND post-Setup; pre-Setup absence is "not installed yet," not a regression.
+- `computer-use-approve-watcher/Install-ApproveWatcherTask.ps1` now uses
+  `[CmdletBinding(SupportsShouldProcess)]` and wraps `Register-ScheduledTask` /
+  `Unregister-ScheduledTask` in `ShouldProcess` checks. Consistent with the other
+  kit scripts; supports `-WhatIf`.
+- README "How To Apply" section opens with a callout pointing back to
+  Quick Start (Setup-Autonomy.ps1 does this all automatically and idempotently).
+- README + component README updated for the template rename and the schema-not-verified
+  caveat.
+
+### Notes
+- `computer-use-approve-watcher/Watch-ComputerUseApprove.ps1` keeps the 500ms UIA
+  tree-walk poll for now. Added a `ponytail:` comment naming the upgrade path
+  (UIA `AddAutomationEventHandler` -- event-driven, no polling) so the deferred
+  optimization is tracked, not lost. Idle cost is negligible; upgrade when CPU
+  measurably matters.
+
 ## v1.3.3 — 2026-06-28
 
 ### Fixed (Uninstall greediness — restored unrelated backups)

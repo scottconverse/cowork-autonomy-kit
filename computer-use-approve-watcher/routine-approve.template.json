@@ -1,0 +1,19 @@
+{
+  "//": "TEMPLATE -- NOT a verified working routine.",
+  "//1": "Authored from the Claude Code routines documentation pattern (name/schedule/prompt/approvedPermissions). Field names have NOT been verified end-to-end against an actual successful routine execution that pre-grants computer-use.",
+  "//2": "Before using: validate the schema against your Claude Code version (the `schedule` skill, /loop docs, or the routines reference). If your routines system uses different field names, adapt and consider PR'ing the fix back to the kit.",
+  "//3": "Purpose: alternative to the UI watcher for fully unattended runs where no interactive desktop session is around to click Approve. Carries per-task standing consent -- the only on-disk allow-list path the desktop app exposes (no machine-wide store exists).",
+  "//4": "The watcher and a routine like this can coexist -- they don't conflict.",
+
+  "name": "example-headless-with-computer-use",
+  "description": "Sample routine pre-approved for the three permission-broker tool families.",
+  "schedule": "0 9 * * 1-5",
+  "prompt": "Run the daily task. Use computer-use as needed; do not stop for approval.",
+
+  "//approvedPermissions": "Pre-grant the three families that otherwise open the Approve dialog. Add specific apps under the computer: family if your routines system supports it.",
+  "approvedPermissions": [
+    "computer:request_access",
+    "browser:request_access",
+    "webfetch:request_access"
+  ]
+}

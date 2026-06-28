@@ -39,7 +39,7 @@ function Compare-WithStage($live, $stageName) {
     $lh = (Get-FileHash -LiteralPath $live      -Algorithm SHA1).Hash
     $sh = (Get-FileHash -LiteralPath $stageFile -Algorithm SHA1).Hash
     if ($lh -eq $sh) { return "present, matches staged ($((Get-Item $live).Length)b)" }
-    else             { return "present, DIFFERS from staged ($((Get-Item $live).Length)b vs $((Get-Item $stageFile).Length)b) -- merge ~/.claude/autonomy-kit if you want kit updates" }
+    else             { return "present, customized ($((Get-Item $live).Length)b; staged copy: $((Get-Item $stageFile).Length)b) -- diff ~/.claude/autonomy-kit if you want to compare" }
 }
 L "staging dir"      $(if (Test-Path $stage) { "$stage ($((Get-ChildItem $stage -File -ErrorAction SilentlyContinue).Count) files)" } else { '(missing -- run Setup-Autonomy.ps1)' })
 L "CLAUDE.md"        (Compare-WithStage $claudeMd 'CLAUDE-Cowork-Core.md')
