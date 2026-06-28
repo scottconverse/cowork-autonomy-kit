@@ -9,7 +9,7 @@
       bypassPermissions + notify-hook entries written by Setup.
     - Restores the most recent ~/.claude/CLAUDE.md.bak if present, else deletes CLAUDE.md.
     - Leaves the toolchain (python, scoop, node, gh, ripgrep, jq, sqlite, uv, playwright)
-      alone — those are general-purpose, not specific to the kit.
+      alone -- those are general-purpose, not specific to the kit.
 
 .PARAMETER RemoveHelper
     Also unregister the ClaudeElevatedDevHelper task. Files under

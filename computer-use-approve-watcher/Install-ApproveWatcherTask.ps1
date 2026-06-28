@@ -25,6 +25,6 @@ $prin    = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interacti
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
     -Settings $set -Principal $prin -Force | Out-Null
 
-Write-Host "Installed '$TaskName' — runs $script at every logon."
+Write-Host "Installed '$TaskName' -- runs $script at every logon."
 Write-Host "Start now:    Start-ScheduledTask -TaskName $TaskName"
 Write-Host "Uninstall:    powershell -File `"$PSCommandPath`" -Uninstall"

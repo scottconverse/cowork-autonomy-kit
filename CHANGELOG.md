@@ -2,6 +2,24 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.3.2 — 2026-06-28
+
+### Fixed (Windows PowerShell 5.1 encoding + alias bugs surfaced by a real install)
+- Replaced em-dashes (—) and en-dashes (–) with ASCII (`--`, `-`) in all .ps1 files.
+  Without a BOM, PS 5.1 decodes the script body as the system codepage; the em-dash bytes
+  become invalid sequence, producing "string is missing the terminator" parser errors that
+  prevent the whole script from running. The most visible victim was
+  `Install-ApproveWatcherTask.ps1`, which silently failed at parse time on first install —
+  Setup then printed a false "installed + started" message and tried to `Start-ScheduledTask`
+  on a task that was never registered.
+- Renamed Doctor's `H` helper function to `Hdr`. `H` is PS 5.1's built-in alias for
+  `Get-History`, and aliases take precedence over functions during command resolution, so
+  every `H "Header"` call was being parsed as `Get-History -Id "Header"` and throwing
+  `Cannot bind parameter 'Id'`.
+- `Setup-Autonomy.ps1` step 7 now verifies the watcher task is actually registered before
+  claiming success, and prints an actionable warning if not. No more silent "installed +
+  started" lies when the installer crashed.
+
 ## v1.3.1 — 2026-06-28
 
 ### Changed (back-port: config-merge restraint from codex-desktop-autonomy-kit)

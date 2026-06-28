@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Portability guard — fails if any shipped file contains a hardcoded per-user or
+    Portability guard -- fails if any shipped file contains a hardcoded per-user or
     machine-specific path (e.g. C:\Users\<account>). This protects the v1.2.1
     portability fix from silent regression on future commits.
 
 .DESCRIPTION
     Scans all tracked-style source files (.ps1/.psm1/.json/.cmd/.md) under the kit
     for literal `C:\Users\<name>` paths. Placeholders (YOUR_USERNAME, <YOUR-HOME>)
-    are allowed — they are obviously-edit-me templates, not machine data. CHANGELOG.md
+    are allowed -- they are obviously-edit-me templates, not machine data. CHANGELOG.md
     is exempt because it intentionally documents the OLD hardcoded path it removed.
 
     Exit 0 = clean (portable). Exit 1 = a hardcoded path leaked back in.

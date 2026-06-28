@@ -5,7 +5,7 @@
 .DESCRIPTION
     Proves the machine-level actions the kit is meant to enable actually execute, in a
     self-contained sandbox. This half answers "CAN the work be done." It does NOT measure
-    Claude's behavior (no unrequested friction, honors your bounds) — that is Parts 2-3 of
+    Claude's behavior (no unrequested friction, honors your bounds) -- that is Parts 2-3 of
     TEST-PLAN.md, which are behavioral and run by handing Claude tasks under the kit.
 
     Everything destructive here happens inside a throwaway sandbox dir and is cleaned up.
@@ -98,7 +98,7 @@ try {
     Add-Result "scheduled_task_read" "PASS" "$n tasks enumerated"
 } catch { Add-Result "scheduled_task_read" "FAIL" $_.Exception.Message }
 
-# 10. Elevation state (informational — the helper bridges this when non-admin)
+# 10. Elevation state (informational -- the helper bridges this when non-admin)
 try {
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     Add-Result "process_elevated" "INFO" "Elevated=$isAdmin"

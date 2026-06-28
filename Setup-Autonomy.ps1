@@ -17,7 +17,7 @@
       6. Cowork config / staging:
          - Always refreshes a staging copy of the kit's files under ~/.claude/autonomy-kit/.
          - Live files (CLAUDE.md, depth profile, notify hook) are written ONLY on first
-           install. If they already exist they are backed up and LEFT UNCHANGED — re-run
+           install. If they already exist they are backed up and LEFT UNCHANGED -- re-run
            Setup safely without clobbering customizations.
          - settings.json: idempotent key-level merge (bypassPermissions + Stop hook +
            YOUR_USERNAME substitution). Skipped entirely with -SkipConfig.
@@ -133,7 +133,7 @@ if (-not $SkipConfig) {
     New-Item -ItemType Directory -Force -Path $stage | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $cl "hooks") | Out-Null
 
-    # Stage the kit's reference copies — always refreshed; never user-edited.
+    # Stage the kit's reference copies -- always refreshed; never user-edited.
     Copy-Item "$kit\CLAUDE-Cowork-Core.md"                                 $stage -Force
     Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md"      $stage -Force
     Copy-Item "$kit\settings.autonomy.example.json"                        $stage -Force
@@ -210,8 +210,13 @@ Step "computer-use approve watcher"
 $watcherInstaller = Join-Path $kit "computer-use-approve-watcher\Install-ApproveWatcherTask.ps1"
 if (Test-Path -LiteralPath $watcherInstaller) {
     & powershell -NoProfile -ExecutionPolicy Bypass -File $watcherInstaller
-    Start-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
-    Write-Host "approve watcher: installed + started (task ClaudeApproveWatcher)"
+    $w = Get-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
+    if ($w) {
+        Start-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
+        Write-Host "approve watcher: installed + started (task ClaudeApproveWatcher)"
+    } else {
+        Write-Warning "approve watcher install FAILED (task not registered). Inspect errors above; re-run computer-use-approve-watcher\Install-ApproveWatcherTask.ps1 manually."
+    }
 } else {
     Write-Warning "approve watcher installer not found: $watcherInstaller"
 }
