@@ -2,6 +2,22 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.3.1 — 2026-06-28
+
+### Changed (back-port: config-merge restraint from codex-desktop-autonomy-kit)
+- `Setup-Autonomy.ps1` no longer overwrites existing live files. The kit now stages its
+  reference copies under `~/.claude/autonomy-kit/` (always refreshed) and writes the live
+  `~/.claude/CLAUDE.md`, `CLAUDE-Cowork-Autonomous-Software-Development.md`, and
+  `hooks/notify-turn-ended.ps1` **only on first install**. If a live file exists, Setup
+  backs it up and leaves the user's copy in place. Re-running Setup is safe.
+- `Doctor-Autonomy.ps1` reports `staging dir` and per-file `present, matches staged` vs
+  `present, DIFFERS from staged` so divergence is visible without manual diffing.
+- `Uninstall-Autonomy.ps1` keeps customized live files: it removes a live file only if it
+  matches the staged copy (else logs `kept ... (user-customized)`). Also removes the
+  `autonomy-kit` staging dir.
+- README adds an "Staging vs live (re-running Setup safely)" step and updates the
+  `YOUR_USERNAME` note (auto-substituted, no longer hand-edit).
+
 ## v1.3.0 — 2026-06-28
 
 ### Added

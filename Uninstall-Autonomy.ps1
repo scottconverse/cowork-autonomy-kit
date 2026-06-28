@@ -99,27 +99,51 @@ if (Test-Path -LiteralPath $sp) {
     }
 }
 
-# 4. CLAUDE.md
+# 4. CLAUDE.md: prefer restoring user's .bak; else remove only if it matches the staged kit copy.
 $claudeMd = Join-Path $cl "CLAUDE.md"
+$stage    = Join-Path $cl "autonomy-kit"
 if (Test-Path -LiteralPath $claudeMd) {
     if (-not (Restore-LatestBak $claudeMd)) {
-        if ($PSCmdlet.ShouldProcess($claudeMd, "remove (no .bak to restore)")) {
-            Remove-Item -LiteralPath $claudeMd -Force
-            Write-Host "removed $claudeMd (no .bak to restore)"
+        $stageFile = Join-Path $stage 'CLAUDE-Cowork-Core.md'
+        $matches = (Test-Path -LiteralPath $stageFile) -and `
+            ((Get-FileHash $claudeMd -Algorithm SHA1).Hash -eq (Get-FileHash $stageFile -Algorithm SHA1).Hash)
+        if ($matches) {
+            if ($PSCmdlet.ShouldProcess($claudeMd, "remove (matches staged)")) {
+                Remove-Item -LiteralPath $claudeMd -Force
+                Write-Host "removed $claudeMd"
+            }
+        } else {
+            Write-Host "kept $claudeMd (differs from staged; user-customized)"
         }
     }
 }
 
-# 5. Depth profile + notify hook (always written by Setup; safe to remove)
-foreach ($p in @(
-    (Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md"),
-    (Join-Path $cl "hooks\notify-turn-ended.ps1")
-)) {
-    if (Test-Path -LiteralPath $p) {
-        if ($PSCmdlet.ShouldProcess($p, "remove")) {
-            Remove-Item -LiteralPath $p -Force
-            Write-Host "removed $p"
+# 5. Depth profile + notify hook (live copies; remove only if they match the staged kit copy
+#    so we don't clobber user customizations made after install).
+function Remove-IfMatchesStage($live, $stageName) {
+    if (-not (Test-Path -LiteralPath $live)) { return }
+    $stageFile = Join-Path $stage $stageName
+    $matches = $false
+    if (Test-Path -LiteralPath $stageFile) {
+        $matches = ((Get-FileHash $live -Algorithm SHA1).Hash -eq (Get-FileHash $stageFile -Algorithm SHA1).Hash)
+    }
+    if ($matches) {
+        if ($PSCmdlet.ShouldProcess($live, "remove (matches staged)")) {
+            Remove-Item -LiteralPath $live -Force
+            Write-Host "removed $live"
         }
+    } else {
+        Write-Host "kept $live (differs from staged or no staged copy; user-customized)"
+    }
+}
+Remove-IfMatchesStage (Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md") 'CLAUDE-Cowork-Autonomous-Software-Development.md'
+Remove-IfMatchesStage (Join-Path $cl "hooks\notify-turn-ended.ps1")                       'notify-turn-ended.ps1'
+
+# 6. Staging dir (kit-owned; always safe to remove)
+if (Test-Path -LiteralPath $stage) {
+    if ($PSCmdlet.ShouldProcess($stage, "remove staging dir")) {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+        Write-Host "removed $stage"
     }
 }
 

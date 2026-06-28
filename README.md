@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.3.0 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.3.1 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
@@ -85,15 +85,22 @@ the keystone. Admin is available and reliable; it's just not the default.
 3. **Permissions/autonomy:** `Setup-Autonomy.ps1` writes only `defaultMode: bypassPermissions`
    (plus empty `ask`/`deny` if they're absent) and the notify Stop hook. It does **not** set
    `additionalDirectories`, `allow`, or `enableAllProjectMcpServers`. Those live in
-   `settings.autonomy.example.json` for **optional manual** merge — it shows the full profile, but
-   its `additionalDirectories` ships a `YOUR_USERNAME` **placeholder you must edit** (replace with
-   your account name, or remove the entry); pasted verbatim it's a no-op, not a real grant. Note:
-   on a box that already has `ask`/`deny` entries the installer **preserves** them (it doesn't
-   force them empty). If you want to gate or block a specific command, add it to `ask`/`deny` yourself.
-4. **Elevated helper (optional):** see `elevated-dev-helper/README.md` for the one-time
-   UAC-approved install.
-5. **Notifications (optional):** wire `hooks/hooks.example.json` into settings to get a
-   desktop toast when a turn ends.
+   `settings.autonomy.example.json` for **optional manual** merge — it shows the full profile.
+   If you merge the example, Setup auto-substitutes `YOUR_USERNAME` → `%USERNAME%` on the next
+   run, so the placeholder no longer needs hand-editing. On a box that already has `ask`/`deny`
+   entries the installer **preserves** them.
+4. **Staging vs live (re-running Setup safely):** the kit refreshes a *staging* copy of its
+   reference files under `~/.claude/autonomy-kit/` on every run. The *live* files —
+   `CLAUDE.md`, the depth profile, the notify hook script — are written **only on first
+   install**. If they already exist they are backed up and **left unchanged**, so a re-run
+   never clobbers customizations. Diff your live files against the staged copies (or run
+   `Doctor-Autonomy.ps1`) when you want to pull in kit updates.
+5. **Elevated helper:** `Setup-Autonomy.ps1` step 8 triggers the helper's UAC installer
+   automatically when `ClaudeElevatedDevHelper` is absent. `-SkipHelper` to opt out. Manual
+   path remains in `elevated-dev-helper/README.md`.
+6. **Notifications (optional):** Setup wires the `notify-turn-ended.ps1` Stop hook into
+   `settings.json`. To replace it with your own, edit the live file at
+   `~/.claude/hooks/notify-turn-ended.ps1`.
 
 ## Operating Model: requested vs. unrequested
 

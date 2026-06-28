@@ -14,8 +14,13 @@
       3. scoop         (the no-admin package-manager keystone)
       4. node-lts, gh, ripgrep, jq, sqlite   (via scoop)
       5. Playwright + browsers                (via pip)
-      6. Cowork config: CLAUDE.md (compact core) + full profile + notify hook + settings
-         merge (bypassPermissions). Skipped with -SkipConfig.
+      6. Cowork config / staging:
+         - Always refreshes a staging copy of the kit's files under ~/.claude/autonomy-kit/.
+         - Live files (CLAUDE.md, depth profile, notify hook) are written ONLY on first
+           install. If they already exist they are backed up and LEFT UNCHANGED — re-run
+           Setup safely without clobbering customizations.
+         - settings.json: idempotent key-level merge (bypassPermissions + Stop hook +
+           YOUR_USERNAME substitution). Skipped entirely with -SkipConfig.
       7. computer-use-approve-watcher: registers and starts a user-scope logon scheduled
          task that auto-clicks the computer-use / browser / webfetch Approve dialog.
       8. elevated-dev-helper: triggers the helper's UAC installer if the
@@ -121,21 +126,33 @@ if ($py3cmd) {
 
 # ------------------------------------------------------------------------------- 6. config
 if (-not $SkipConfig) {
-    Step "Cowork config (~/.claude)"
-    $cl = "$env:USERPROFILE\.claude"
-    New-Item -ItemType Directory -Force -Path $cl | Out-Null
+    Step "Cowork config / profile staging (~/.claude)"
+    $cl    = "$env:USERPROFILE\.claude"
+    $stage = Join-Path $cl "autonomy-kit"
+    New-Item -ItemType Directory -Force -Path $cl    | Out-Null
+    New-Item -ItemType Directory -Force -Path $stage | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $cl "hooks") | Out-Null
 
-    # Back up an existing CLAUDE.md before we overwrite it (don't silently clobber the user's).
-    $claudeMd = Join-Path $cl "CLAUDE.md"
-    if (Test-Path -LiteralPath $claudeMd) {
-        Copy-Item $claudeMd "$claudeMd.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
-        Write-Host "backed up existing CLAUDE.md"
+    # Stage the kit's reference copies — always refreshed; never user-edited.
+    Copy-Item "$kit\CLAUDE-Cowork-Core.md"                                 $stage -Force
+    Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md"      $stage -Force
+    Copy-Item "$kit\settings.autonomy.example.json"                        $stage -Force
+    Copy-Item "$kit\hooks\notify-turn-ended.ps1"                           $stage -Force
+    Write-Host "staged kit files under $stage (refreshed)"
+
+    # Live files: create only if absent. If present, back up and leave the user's copy alone.
+    function Install-LiveOrLeave($src, $dst) {
+        if (Test-Path -LiteralPath $dst) {
+            Copy-Item $dst "$dst.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
+            Write-Host ("kept existing {0} (backup made; merge from staging if you want kit updates)" -f (Split-Path -Leaf $dst))
+        } else {
+            Copy-Item $src $dst -Force
+            Write-Host "created $dst"
+        }
     }
-    Copy-Item "$kit\CLAUDE-Cowork-Core.md" $claudeMd -Force
-    Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md" $cl -Force
-    Copy-Item "$kit\hooks\notify-turn-ended.ps1" (Join-Path $cl "hooks") -Force
-    Write-Host "wrote CLAUDE.md, depth profile, notify hook"
+    Install-LiveOrLeave "$kit\CLAUDE-Cowork-Core.md"                            (Join-Path $cl "CLAUDE.md")
+    Install-LiveOrLeave "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md" (Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md")
+    Install-LiveOrLeave "$kit\hooks\notify-turn-ended.ps1"                      (Join-Path $cl "hooks\notify-turn-ended.ps1")
 
     $sp = Join-Path $cl "settings.json"
     $settings = $null

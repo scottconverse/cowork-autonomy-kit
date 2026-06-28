@@ -30,9 +30,21 @@ $claudeMd = Join-Path $cl "CLAUDE.md"
 $sp       = Join-Path $cl "settings.json"
 $profile  = Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md"
 $notify   = Join-Path $cl "hooks\notify-turn-ended.ps1"
-L "CLAUDE.md"        $(if (Test-Path $claudeMd) { "present ($((Get-Item $claudeMd).Length) bytes)" } else { '(missing)' })
-L "depth profile"    $(if (Test-Path $profile)  { "present" } else { '(missing)' })
-L "notify hook file" $(if (Test-Path $notify)   { "present" } else { '(missing)' })
+$stage    = Join-Path $cl "autonomy-kit"
+
+function Compare-WithStage($live, $stageName) {
+    $stageFile = Join-Path $stage $stageName
+    if (-not (Test-Path $live))      { return '(missing)' }
+    if (-not (Test-Path $stageFile)) { return "present ($((Get-Item $live).Length)b; no staged copy to compare)" }
+    $lh = (Get-FileHash -LiteralPath $live      -Algorithm SHA1).Hash
+    $sh = (Get-FileHash -LiteralPath $stageFile -Algorithm SHA1).Hash
+    if ($lh -eq $sh) { return "present, matches staged ($((Get-Item $live).Length)b)" }
+    else             { return "present, DIFFERS from staged ($((Get-Item $live).Length)b vs $((Get-Item $stageFile).Length)b) — merge ~/.claude/autonomy-kit if you want kit updates" }
+}
+L "staging dir"      $(if (Test-Path $stage) { "$stage ($((Get-ChildItem $stage -File -ErrorAction SilentlyContinue).Count) files)" } else { '(missing — run Setup-Autonomy.ps1)' })
+L "CLAUDE.md"        (Compare-WithStage $claudeMd 'CLAUDE-Cowork-Core.md')
+L "depth profile"    (Compare-WithStage $profile  'CLAUDE-Cowork-Autonomous-Software-Development.md')
+L "notify hook file" (Compare-WithStage $notify   'notify-turn-ended.ps1')
 
 if (Test-Path $sp) {
     try {
