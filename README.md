@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.2.2 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.3.0 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
@@ -9,19 +9,26 @@ higher-priority instruction boundaries.
 
 ## Contents
 
-- `Setup-Autonomy.ps1` — **one-command fresh-machine bootstrap.** Installs the whole
-  toolchain (Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright +
-  browsers) and the Cowork config (CLAUDE.md, hooks, settings), all user-scope / no-admin.
+- `Setup-Autonomy.ps1` — **one-command fresh-machine bootstrap.** Installs the toolchain
+  (Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright + browsers),
+  the Cowork config (CLAUDE.md, hooks, settings), the approve watcher, and triggers the
+  elevated-dev-helper UAC install if not already present.
+- `Doctor-Autonomy.ps1` — read-only status dashboard (toolchain, config, watcher, helper).
+- `Uninstall-Autonomy.ps1` — reverses the config layer, restores `.bak` files, removes the
+  watcher task. Leaves toolchain alone. `-RemoveHelper` to also drop the elevated helper task.
 - `CLAUDE-Cowork-Core.md` — compact standing instructions for everyday speed (use as your
   live `~/.claude/CLAUDE.md`).
 - `CLAUDE-Cowork-Autonomous-Software-Development.md` — the full / depth operating profile,
   pulled in for broad or high-blast-radius work.
 - `settings.autonomy.example.json` — Claude Code permission profile (`bypassPermissions`,
-  empty `ask`/`deny`). This is where autonomy actually happens.
+  empty `ask`/`deny`).
 - `elevated-dev-helper/` — bounded elevated-helper pattern for admin actions when Claude Code
-  runs non-admin (Claude has no elevated sandbox, so this is the primary admin path).
-- `tests/` — `Test-AutonomyKit.ps1` capability harness + `TEST-PLAN.md` (two-pole plan).
-- `hooks/` — optional desktop-notification parity with Codex's `notify` hook.
+  runs non-admin.
+- `tests/` — `Test-AutonomyKit.ps1` capability harness + `TEST-PLAN.md`.
+- `hooks/` — desktop-notification parity with Codex's `notify` hook.
+- `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
+  browser / webfetch `Approve` dialog; includes a `routine-approve.example.json` template
+  for headless runs. See [its README](computer-use-approve-watcher/README.md).
 
 ## Intended Use
 
@@ -115,43 +122,38 @@ The hybrid two-tier instruction design (compact core + depth rule), the backup-b
 step, and the requested-vs-unrequested operating line are all adopted from the installed
 Codex hybrid configuration.
 
-## Computer-use authorization (why it still prompts)
+## Computer-use authorization
 
-There are **two** permission systems, and this kit only governs one:
+Two permission systems:
 
 1. **Claude Code tool permissions** (Bash, PowerShell, file edits) — governed by
-   `bypassPermissions`. These never prompt. ✔ handled by the kit.
-2. **Computer-use** (`mcp__computer-use__*`: screenshots, clicking, controlling native apps) —
-   governed by its **own** `request_access` dialog, **one per session**. ✘ **not** governed by
-   `bypassPermissions`, and **cannot** be made standing by any local config.
+   `bypassPermissions`. Handled by the kit; never prompts.
+2. **Computer-use** (`mcp__computer-use__*`: screenshots, clicking, native apps) — separate
+   `request_access` dialog, per-session, app-enforced, not affected by `bypassPermissions`.
 
-This was investigated directly against the desktop app (Claude `1.14271.0.0`, claude-code
-`2.1.181`) — see the full writeup with code citations: *computer-use-standing-consent findings*.
-Summary of why it is unfixable from config:
+Handled by [`computer-use-approve-watcher/`](computer-use-approve-watcher/README.md), which
+`Setup-Autonomy.ps1` installs and starts. The watcher polls UI Automation and clicks
+`Approve` automatically — the same button serves the `computer:`, `browser:`, and
+`webfetch:` permission-broker dialogs. Stop with `Uninstall-Autonomy.ps1` or
+`Stop-ScheduledTask -TaskName ClaudeApproveWatcher`. Headless alternative:
+[`routine-approve.example.json`](computer-use-approve-watcher/routine-approve.example.json).
+
+### Reference: how the gate behaves (verified against Claude `1.14271.0.0`, claude-code `2.1.181`)
 
 - `request_access` enters the desktop app's permission broker as the pseudo-tool
-  `computer:request_access`. That tool family (`computer:` / `browser:` / `webfetch:`) is
-  **special-cased to always open an interactive dialog**, in a branch that returns **before** any
-  `bypassPermissions` / allow-rule / cached-decision is consulted.
-- Promotion to a standing "always allow" rule is **explicitly stripped** — the code logs
-  `always-allow suppressed` for exactly these tools.
-- Grants live only on the **session** (`cuAllowedApps`), start empty on every new session, and
-  even **expire after 30 min** within a long session. There is **no global allow-list store** on
-  disk to pre-seed (verified across Local Storage, IndexedDB, and all `%APPDATA%\Claude` config).
-- This is an intentional human-in-the-loop boundary for the three tool families that act on the
-  world outside the sandbox (native apps, the live browser, arbitrary URLs). The kit does **not**
-  attempt to defeat it.
+  `computer:request_access`. The `computer:` / `browser:` / `webfetch:` family is special-cased
+  to always open an interactive dialog, in a branch that returns before `bypassPermissions` /
+  allow-rules / cached decisions are consulted.
+- Promotion to a standing "always allow" rule is stripped — the app logs `always-allow suppressed`.
+- Grants live on the **session** (`cuAllowedApps`), start empty each session, expire ~30 min.
+  No on-disk allow-list (verified across Local Storage, IndexedDB, and `%APPDATA%\Claude`).
 
-**Lowest-friction workflow:** on first desktop need in a session, call `request_access` **once**
-with the *full* app set you'll touch (e.g. `Claude`, `Google Chrome`, `File Explorer`, + the task
-app) and the clipboard/system-key flags you need — one approval covers the set; re-request after
-~30 min or on an "not in allowlist" error. For unattended runs, a **scheduled task / routine** can
-carry pre-approved `computer:request_access` in its `approvedPermissions` (the only standing path
-the app exposes — per-task, not machine-wide). Prefer Bash/PowerShell and the Chrome MCP where they
-suffice; neither carries the computer-use prompt.
-
-`Setup-Autonomy.ps1` prints this same note during the config step so it isn't rediscovered the
-hard way.
+If you want to handle the gate manually instead of with the watcher: on first desktop need in
+a session, call `request_access` once with the full app set you'll touch (e.g. `Claude`,
+`Google Chrome`, `File Explorer`, plus the task app) — one approval covers the set; re-request
+after ~30 min or on a "not in allowlist" error. For unattended runs, a scheduled task / routine
+can carry `computer:request_access` in its `approvedPermissions` (per-task, not machine-wide).
+Bash/PowerShell and the Chrome MCP don't carry the prompt.
 
 ## Safety Notes
 

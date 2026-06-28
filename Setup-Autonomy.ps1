@@ -16,6 +16,10 @@
       5. Playwright + browsers                (via pip)
       6. Cowork config: CLAUDE.md (compact core) + full profile + notify hook + settings
          merge (bypassPermissions). Skipped with -SkipConfig.
+      7. computer-use-approve-watcher: registers and starts a user-scope logon scheduled
+         task that auto-clicks the computer-use / browser / webfetch Approve dialog.
+      8. elevated-dev-helper: triggers the helper's UAC installer if the
+         ClaudeElevatedDevHelper task is not already present. Skip with -SkipHelper.
 
     Idempotent: re-running skips anything already present and never duplicates settings
     entries. Everything is user-scope; the only admin step (the elevated dev helper) is left
@@ -27,13 +31,17 @@
 .PARAMETER SkipBrowsers
     Install the Playwright package but skip the (large) browser download.
 
+.PARAMETER SkipHelper
+    Skip the elevated-dev-helper UAC installer (step 8).
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
 #>
 [CmdletBinding()]
 param(
     [switch]$SkipConfig,
-    [switch]$SkipBrowsers
+    [switch]$SkipBrowsers,
+    [switch]$SkipHelper
 )
 
 $ErrorActionPreference = "Stop"
@@ -159,23 +167,53 @@ if (-not $SkipConfig) {
     }
     $settings.hooks | Add-Member Stop $stop -Force
 
+    # additionalDirectories: if any entry contains the literal "YOUR_USERNAME" placeholder
+    # (from a manual merge of settings.autonomy.example.json), substitute the real user name.
+    if ($settings.permissions.PSObject.Properties.Name -contains 'additionalDirectories') {
+        $subbed = $false
+        $newDirs = @()
+        foreach ($d in @($settings.permissions.additionalDirectories)) {
+            $orig = "$d"
+            $fixed = $orig -replace 'YOUR_USERNAME', $env:USERNAME
+            if ($fixed -ne $orig) { $subbed = $true }
+            $newDirs += $fixed
+        }
+        if ($subbed) {
+            $settings.permissions | Add-Member additionalDirectories $newDirs -Force
+            Write-Host "substituted YOUR_USERNAME -> $env:USERNAME in additionalDirectories"
+        }
+    }
+
     ($settings | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $sp -Encoding UTF8
     Write-Host "merged settings.json (bypassPermissions + notify Stop hook)"
+}
 
-    # --- Computer-use authorization note (NOT a settings change; documented gate) ---
-    # bypassPermissions governs Claude Code tool permissions (Bash/PowerShell/file edits) only.
-    # The computer-use MCP (mcp__computer-use__*) has a SEPARATE per-session `request_access`
-    # dialog that bypassPermissions does NOT affect and that NO local config can make standing:
-    # the desktop app special-cases the `computer:` / `browser:` / `webfetch:` tools to always
-    # prompt and explicitly strips any always-allow rule ("always-allow suppressed"). Grants are
-    # session-scoped (cuAllowedApps), start empty, and expire after ~30 min. Verified against the
-    # app bundle; this is an intentional human-in-the-loop boundary, not a fixable setting.
-    Write-Host ""
-    Write-Host "NOTE: computer-use ('Allow Claude to control <apps>?') still prompts once per" -ForegroundColor Yellow
-    Write-Host "      session. That gate is app-enforced and NOT controlled by bypassPermissions;" -ForegroundColor Yellow
-    Write-Host "      it cannot be pre-seeded from config. Lowest friction: on first desktop need," -ForegroundColor Yellow
-    Write-Host "      call request_access ONCE with the full app set you'll use. See README" -ForegroundColor Yellow
-    Write-Host "      'Computer-use authorization (why it still prompts)'." -ForegroundColor Yellow
+# ----------------------------------------------------------- 7. computer-use approve watcher
+Step "computer-use approve watcher"
+$watcherInstaller = Join-Path $kit "computer-use-approve-watcher\Install-ApproveWatcherTask.ps1"
+if (Test-Path -LiteralPath $watcherInstaller) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $watcherInstaller
+    Start-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
+    Write-Host "approve watcher: installed + started (task ClaudeApproveWatcher)"
+} else {
+    Write-Warning "approve watcher installer not found: $watcherInstaller"
+}
+
+# ------------------------------------------------------------------- 8. elevated-dev-helper
+if (-not $SkipHelper) {
+    Step "elevated dev helper (UAC prompt if not already installed)"
+    $helperTask    = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
+    $helperInstall = Join-Path $kit "elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd"
+    if ($helperTask) {
+        Write-Host "ClaudeElevatedDevHelper already installed - skip"
+    } elseif (Test-Path -LiteralPath $helperInstall) {
+        Write-Host "launching helper installer (Windows UAC prompt expected)..."
+        Start-Process -FilePath $helperInstall -Verb RunAs -Wait
+        $helperTask = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
+        Write-Host ("helper: {0}" -f $(if ($helperTask) { 'installed' } else { 'NOT installed (UAC declined or installer error)' }))
+    } else {
+        Write-Warning "helper installer not found: $helperInstall"
+    }
 }
 
 # -------------------------------------------------------------------------------- summary
@@ -189,6 +227,5 @@ $report.GetEnumerator() | ForEach-Object { "{0,-10} {1}" -f $_.Key, $_.Value } |
 
 Write-Host "`nNEXT:" -ForegroundColor Green
 Write-Host "  1. RESTART Cowork/Claude Code so the new PATH, CLAUDE.md, and hooks load."
-Write-Host "  2. (optional, admin) Install the elevated dev helper for system installs:"
-Write-Host "       double-click elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd and approve UAC."
+Write-Host "  2. Inventory check anytime:  powershell -File .\Doctor-Autonomy.ps1"
 Write-Host "  3. Install any other tool on demand, no admin, via: scoop install <x> | uv tool install <x> | pip install <x> | npm i -g <x>."

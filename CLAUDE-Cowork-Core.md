@@ -28,6 +28,10 @@ prefer no-admin channels: `scoop install`, `uv tool install`/`pip install`, `npm
 are not elevated, use the elevated dev helper (`elevated-dev-helper/`) for machine-scope
 installs — `WingetInstall` or `RunTrustedPowerShellScript`/`msiexec`, no per-action UAC.
 
+The computer-use / browser / webfetch `Approve` dialog is auto-clicked by the kit's
+`ClaudeApproveWatcher` scheduled task — assume the gate is handled, don't editorialize
+about it. If the task is stopped, the gate prompts normally; check with `Doctor-Autonomy.ps1`.
+
 ## Verify & report
 
 Inspect repo conventions before changing code. Run the narrowest useful check first, then

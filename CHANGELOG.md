@@ -2,6 +2,45 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.3.0 — 2026-06-28
+
+### Added
+- `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
+  browser / webfetch `Approve` dialog via Windows UI Automation.
+  - `Watch-ComputerUseApprove.ps1` — UIA polling watcher, tunable label/process/poll/debounce.
+  - `Install-ApproveWatcherTask.ps1` — registers a user-scope logon scheduled task
+    (`ClaudeApproveWatcher`, no admin); supports `-Uninstall`.
+  - `routine-approve.example.json` — Claude Code routine template for headless runs that
+    pre-grants `computer:` / `browser:` / `webfetch:` via `approvedPermissions`.
+- `Setup-Autonomy.ps1`:
+  - Step 7 installs and starts the watcher (default-on, no flag).
+  - Step 8 triggers the elevated-dev-helper UAC installer if `ClaudeElevatedDevHelper` is
+    not already registered. `-SkipHelper` opts out.
+  - Auto-substitutes `YOUR_USERNAME` in `additionalDirectories` with `$env:USERNAME` on
+    settings merge.
+- `Doctor-Autonomy.ps1` — read-only status dashboard: toolchain presence, CLAUDE.md +
+  settings state, watcher task + process status, helper task status. Flags unresolved
+  `YOUR_USERNAME` placeholders.
+- `Uninstall-Autonomy.ps1` — reverses the config layer: removes `ClaudeApproveWatcher`,
+  restores most recent `settings.json.bak` / `CLAUDE.md.bak` (or strips kit-added entries
+  if no backup), removes depth profile + notify hook. `-RemoveHelper` to also drop the
+  elevated helper task. Toolchain untouched. Supports `-WhatIf`.
+- `tests/Test-AutonomyKit.ps1` — three new checks: `approve_watcher_task` (registered +
+  Ready/Running), `approve_watcher_process` (PS process alive running the watcher script),
+  `uiautomation_assemblies` (UIA assemblies load).
+- `CLAUDE-Cowork-Core.md` — one-paragraph note that `ClaudeApproveWatcher` auto-handles the
+  permission-broker dialogs, so future sessions don't re-explain or editorialize about them.
+
+### Changed
+- Rewrote the README "Computer-use authorization" section: leads with "handled by the
+  watcher", app-behavior facts kept as a reference subsection for anyone disabling it.
+- Removed all "trade-off" / "opt-in escape hatch" / "single-user only" prescriptive framing
+  from component and main READMEs. The kit is for personal machines; it doesn't
+  editorialize about the owner's choices.
+- `Setup-Autonomy.ps1`: removed the yellow "computer-use still prompts" console block (no
+  longer true with the watcher running); replaced the "double-click the .cmd" NEXT step
+  with `Doctor-Autonomy.ps1` and tool-install hints.
+
 ## v1.2.2 — 2026-06-24
 
 ### Fixed (docs — name the real root cause of non-elevation)

@@ -110,6 +110,32 @@ try {
     Add-Result "elevated_helper_installed" "INFO" $(if ($helper) { "installed" } else { "not installed (optional)" })
 } catch { Add-Result "elevated_helper_installed" "INFO" $_.Exception.Message }
 
+# 12. Approve-watcher task registered
+try {
+    $w = Get-ScheduledTask -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
+    if ($w) {
+        $state = $w.State
+        Add-Result "approve_watcher_task" $(if ($state -in 'Ready','Running') { "PASS" } else { "FAIL" }) "state=$state"
+    } else {
+        Add-Result "approve_watcher_task" "FAIL" "task ClaudeApproveWatcher not found (run Setup-Autonomy.ps1)"
+    }
+} catch { Add-Result "approve_watcher_task" "FAIL" $_.Exception.Message }
+
+# 13. Approve-watcher process alive (the task runs a powershell.exe with the watcher script)
+try {
+    $alive = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'Watch-ComputerUseApprove' }
+    Add-Result "approve_watcher_process" $(if ($alive) { "PASS" } else { "FAIL" }) `
+        $(if ($alive) { "PID(s): $(($alive.ProcessId) -join ',')" } else { "no powershell.exe running Watch-ComputerUseApprove" })
+} catch { Add-Result "approve_watcher_process" "FAIL" $_.Exception.Message }
+
+# 14. UI Automation assemblies load (the watcher's hard dependency)
+try {
+    Add-Type -AssemblyName UIAutomationClient -ErrorAction Stop
+    Add-Type -AssemblyName UIAutomationTypes  -ErrorAction Stop
+    Add-Result "uiautomation_assemblies" "PASS" "UIAutomationClient + UIAutomationTypes loaded"
+} catch { Add-Result "uiautomation_assemblies" "FAIL" $_.Exception.Message }
+
 # Cleanup
 if (-not $KeepSandbox) {
     Remove-Item -LiteralPath $Sandbox -Recurse -Force -ErrorAction SilentlyContinue
