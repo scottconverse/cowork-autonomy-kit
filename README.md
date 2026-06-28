@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.3.2 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.3.3 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical

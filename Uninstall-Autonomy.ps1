@@ -30,9 +30,14 @@ $ErrorActionPreference = "Stop"
 $cl = "$env:USERPROFILE\.claude"
 
 function Restore-LatestBak($path) {
+    # Only consider backups in the kit's format: <name>.bak-YYYYMMDD-HHmmss
+    # (matches what Setup-Autonomy.ps1's Install-LiveOrLeave writes). This avoids
+    # restoring unrelated backups other tools may have dropped alongside.
     $dir  = Split-Path -Parent $path
     $name = Split-Path -Leaf   $path
+    $rx   = "^" + [regex]::Escape($name) + "\.bak-\d{8}-\d{6}$"
     $bak  = Get-ChildItem -LiteralPath $dir -Filter "$name.bak-*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match $rx } |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($bak) {
         if ($PSCmdlet.ShouldProcess($path, "restore from $($bak.Name)")) {
@@ -40,6 +45,12 @@ function Restore-LatestBak($path) {
             Write-Host "restored $path  <-  $($bak.Name)"
         }
         return $true
+    }
+    # Surface any non-kit backups so the user knows they exist but were skipped.
+    $other = Get-ChildItem -LiteralPath $dir -Filter "$name.bak-*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch $rx } | Select-Object -ExpandProperty Name
+    if ($other) {
+        Write-Host "no kit-format backup for $name; ignored non-kit backups: $($other -join ', ')"
     }
     return $false
 }

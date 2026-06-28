@@ -2,6 +2,18 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.3.3 — 2026-06-28
+
+### Fixed (Uninstall greediness — restored unrelated backups)
+- `Uninstall-Autonomy.ps1`'s `Restore-LatestBak` previously matched any
+  `<name>.bak-*` file alongside the live file and restored the most recent. This
+  greedily picked up backups created by other tools (e.g. `settings.json.bak-pre-ponytail`
+  from a ponytail-plugin install), rolling settings further back than the kit ever
+  wrote and silently dropping unrelated hook entries.
+- Restore now requires the kit's own format: `<name>.bak-YYYYMMDD-HHmmss` (the
+  format Setup's `Install-LiveOrLeave` writes). Non-kit backups in the same
+  directory are listed in output so the user knows they exist but were skipped.
+
 ## v1.3.2 — 2026-06-28
 
 ### Fixed (Windows PowerShell 5.1 encoding + alias bugs surfaced by a real install)
