@@ -2,6 +2,41 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v1.5.0 — 2026-06-28
+
+Cleared the 6 remaining "actual concerns worth fixing" from the GauntletGate-full
+post-bias-pass. Behavior delta is one edge case; the rest is regression guards and docs.
+
+### Fixed
+- **`Setup-Autonomy.ps1` step 3 (scoop) no longer aborts Setup** when scoop is already
+  on PATH outside `$env:USERPROFILE\scoop`. Previously, `iex (irm get.scoop.sh)` would
+  emit "Scoop is already installed. Abort." and `$ErrorActionPreference=Stop` killed
+  the whole script. Now: check `Get-Command scoop` first; if found, skip the installer
+  entirely. If not found, attempt the install inside a try/catch and verify via
+  `Get-Command` afterwards. Step 4 tool installs skip cleanly with a warning if scoop
+  still isn't available. (Edge-case fix; affects users with scoop in non-standard
+  locations -- your standard install is unaffected.)
+
+### Added
+- `tests/Test-UninstallBakFilter.ps1` -- regression guard for the v1.3.3 Uninstall
+  bak-format filter. Materializes a temp dir with one kit-format bak and three
+  non-kit baks (with non-kit set as MOST RECENT to defeat naive timestamp sort),
+  applies the regex, asserts the kit-format wins. Catches any future drift in the
+  filter pattern.
+- `tests/Test-SettingsMerge.ps1` -- regression guard for Setup's settings.json merge
+  idempotency. Runs the merge logic three rounds (clean, re-run, pre-seeded with a
+  foreign Stop hook) and asserts: exactly 1 notify Stop hook, `defaultMode=bypassPermissions`,
+  foreign hooks preserved, no UTF-8 BOM. Catches the "duplicate Stop hook on re-run"
+  class of bug.
+
+### Changed
+- README "Quick start" gains a 4-line SmartScreen / Mark-of-the-Web note for ZIP
+  downloaders. `git clone`'d installs are unaffected.
+- README "Contents" entry for `tests/` now lists every test file by name and purpose.
+- v1.4.0 CHANGELOG entry gains an "Upgrade note (from v1.3.x)" paragraph explaining
+  the staging-vs-live behavior change so anyone upgrading knows their existing
+  `~/.claude/CLAUDE.md` is preserved (was overwritten in v1.3.x).
+
 ## v1.4.2 — 2026-06-28
 
 ### Changed
@@ -36,6 +71,16 @@ All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 ## v1.4.0 — 2026-06-28
 
 Cleared every finding from the v1.3.3 GauntletGate lite audit.
+
+### Upgrade note (from v1.3.x)
+- Behavior change: v1.3.x's Setup unconditionally overwrote `~/.claude/CLAUDE.md`
+  with the kit's `CLAUDE-Cowork-Core.md`. v1.4.0 introduces staging-vs-live: the
+  kit's reference files are refreshed under `~/.claude/autonomy-kit/` on every
+  Setup run, but the live `CLAUDE.md` (and depth profile + notify hook) is
+  **written only on first install** -- if it already exists, it's backed up and
+  left untouched. This means re-running Setup after v1.4.0 will NOT push kit
+  updates into your live `CLAUDE.md`; diff against `~/.claude/autonomy-kit/`
+  (or run `Doctor-Autonomy.ps1`) when you want to pull updates in.
 
 ### Fixed (Major)
 - `Setup-Autonomy.ps1` now writes `settings.json` UTF-8 **without BOM** via

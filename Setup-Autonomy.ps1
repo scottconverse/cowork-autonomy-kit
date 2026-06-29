@@ -94,12 +94,27 @@ Write-Host "uv: $(& "$env:USERPROFILE\.local\bin\uv.exe" --version 2>&1)"
 
 # --------------------------------------------------------------------------------- 3. scoop
 Step "scoop (no-admin package-manager keystone)"
-if (-not (Test-Path "$env:USERPROFILE\scoop\shims\scoop.ps1")) {
-    Invoke-Expression (Invoke-RestMethod -Uri "https://get.scoop.sh")
+# If scoop is already on PATH (anywhere -- standard $env:USERPROFILE\scoop OR a less-common
+# location), the get.scoop.sh installer aborts with "Scoop is already installed". Under
+# $ErrorActionPreference=Stop that kills Setup, even though scoop is fine. Try the install,
+# but tolerate that abort; verify by Get-Command afterwards.
+if (-not (Get-Command scoop -ErrorAction SilentlyContinue) -and
+    -not (Test-Path "$env:USERPROFILE\scoop\shims\scoop.ps1")) {
+    try {
+        Invoke-Expression (Invoke-RestMethod -Uri "https://get.scoop.sh")
+    } catch {
+        Write-Warning "scoop installer raised: $($_.Exception.Message). Will verify via Get-Command."
+    }
 }
 Prepend-UserPath "$env:USERPROFILE\scoop\shims"
-$scoop = "$env:USERPROFILE\scoop\shims\scoop.ps1"
-& $scoop bucket add main *> $null
+$scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
+$scoop = if ($scoopCmd) { $scoopCmd.Source } else { "$env:USERPROFILE\scoop\shims\scoop.ps1" }
+if (-not (Test-Path $scoop)) {
+    Write-Warning "scoop not found after install attempt -- skipping scoop-based tool installs in step 4."
+    $scoop = $null
+} else {
+    & $scoop bucket add main *> $null
+}
 
 # --------------------------------------------------------------- 4. core CLI tools via scoop
 Step "core tools via scoop (nodejs-lts, gh, ripgrep, jq, sqlite)"
@@ -109,8 +124,10 @@ foreach ($pkg in $wanted.Keys) {
     $cmd = $wanted[$pkg]
     if (Get-Command $cmd -ErrorAction SilentlyContinue) {
         Write-Host "$cmd already present - skip"
-    } else {
+    } elseif ($scoop) {
         & $scoop install $pkg
+    } else {
+        Write-Warning "$cmd not present and scoop unavailable -- install manually"
     }
 }
 

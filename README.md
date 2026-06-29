@@ -1,6 +1,6 @@
 # Cowork Autonomy Kit
 
-**Version 1.4.2 · Windows** — see [CHANGELOG.md](CHANGELOG.md).
+**Version 1.5.0 · Windows** — see [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
 software-development autonomy on Windows machines, within Claude Code, operating-system, and
@@ -25,7 +25,10 @@ higher-priority instruction boundaries.
   empty `ask`/`deny`).
 - `elevated-dev-helper/` — bounded elevated-helper pattern for admin actions when Claude Code
   runs non-admin.
-- `tests/` — `Test-AutonomyKit.ps1` capability harness + `TEST-PLAN.md`.
+- `tests/` — `Test-AutonomyKit.ps1` (capability harness), `Test-NoHardcodedPaths.ps1`
+  (portability regression guard), `Test-NoBOM.ps1` (UTF-8 BOM regression guard),
+  `Test-UninstallBakFilter.ps1` (bak-filter regression guard),
+  `Test-SettingsMerge.ps1` (merge-idempotency regression guard), and `TEST-PLAN.md`.
 - `hooks/` — desktop-notification parity with Codex's `notify` hook.
 - `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
   browser / webfetch `Approve` dialog; includes a `routine-approve.template.json` (schema
@@ -55,6 +58,11 @@ Both paths trigger **one** Windows UAC prompt during setup — for the
 elevated-dev-helper install in step 8. Click Yes once. Everything else is
 user-scope, no admin. Pass `-SkipHelper` (terminal) or `Install.cmd -SkipHelper`
 to skip the helper install entirely.
+
+> **First-run SmartScreen note.** If you downloaded the kit as a ZIP rather than
+> `git clone`, Windows tags the files with Mark-of-the-Web. Double-clicking
+> `Install.cmd` may show "Windows protected your PC" — click **More info**, then
+> **Run anyway**. One-time per ZIP. `git clone`'d files don't carry MOTW.
 
 That installs the full toolchain and config below, idempotently, with **no admin**. The one
 admin step (the elevated dev helper) stays optional and prints its own UAC installer at the
