@@ -1,6 +1,26 @@
 # Changelog
 
-All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
+All notable changes to the Cowork Autonomy Kit. Dates are UTC.
+
+## v1.4.2 — 2026-06-28
+
+### Changed
+- Renamed: `claude-cowork-autonomy-kit` -> **`cowork-autonomy-kit`** on GitHub. Old
+  URL auto-redirects via GitHub's repo-rename behavior, but new clones should use
+  https://github.com/scottconverse/cowork-autonomy-kit.git.
+- Scrubbed "Claude Cowork Autonomy Kit" -> "Cowork Autonomy Kit" in README H1, all
+  PowerShell `.SYNOPSIS` blocks, `Install.cmd` header, and `Watch-ComputerUseApprove.ps1`
+  attribution comment.
+- Dropped the prominent "ported from Codex" version-line subtitle.
+- Replaced the long "What Changed From The Codex Version" comparison table with a
+  short "Origin" footer paragraph. Lineage honestly acknowledged; framing no longer
+  implies ongoing Codex affiliation.
+
+### Not changed (deliberate)
+- Scheduled task names (`ClaudeApproveWatcher`, `ClaudeElevatedDevHelper`) and live
+  file names (`~/.claude/CLAUDE.md`, `CLAUDE-Cowork-Core.md`, depth profile) are kept
+  as-is. They refer to Claude-the-AI being controlled (not the kit's branding), and
+  renaming them would orphan files / break existing installs.
 
 ## v1.4.1 — 2026-06-28
 

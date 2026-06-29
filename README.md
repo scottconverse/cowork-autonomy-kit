@@ -1,7 +1,6 @@
-# Claude Cowork Autonomy Kit
+# Cowork Autonomy Kit
 
-**Version 1.4.1 · Windows · ported from the Codex Desktop Autonomy Kit** — see
-[CHANGELOG.md](CHANGELOG.md).
+**Version 1.4.2 · Windows** — see [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
 software-development autonomy on Windows machines, within Claude Code, operating-system, and
@@ -46,8 +45,8 @@ From a clean Cowork/Windows box, clone the kit, then either:
 **Double-click `Install.cmd`** at the repo root (easiest). Or, equivalently, from a terminal:
 
 ```powershell
-git clone https://github.com/scottconverse/claude-cowork-autonomy-kit.git
-cd claude-cowork-autonomy-kit
+git clone https://github.com/scottconverse/cowork-autonomy-kit.git
+cd cowork-autonomy-kit
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
 # then RESTART Cowork so PATH, CLAUDE.md, and hooks load
 ```
@@ -126,21 +125,14 @@ The profile's governing line, mirrored from the Codex setup it was ported from:
   hard-to-reverse actions get a confirmation pause. That pause never applies to your
   requests.
 
-## What Changed From The Codex Version
+## Origin
 
-| Codex | Claude Cowork |
-|---|---|
-| Codex Desktop (surface) | Claude Code in Cowork mode |
-| `config.toml` `developer_instructions` | `~/.claude/CLAUDE.md` (compact core + full profile) |
-| `approval_policy="never"` + `:danger-full-access` | `defaultMode: "bypassPermissions"` |
-| `[windows] sandbox="elevated"` | *no analog* — runs as your user; elevated helper covers admin |
-| `notify ... turn-ended` | optional Stop hook (`hooks/`) |
-| Codex plugins / skills | Claude skills + subagents + MCP servers |
-| `CodexElevatedDevHelper` / `C:\dev\CodexElevatedHelper` / `.codex` root | `ClaudeElevatedDevHelper` / `C:\dev\ClaudeElevatedHelper` / `.claude` root |
-
-The hybrid two-tier instruction design (compact core + depth rule), the backup-before-install
-step, and the requested-vs-unrequested operating line are all adopted from the installed
-Codex hybrid configuration.
+Lineage: this kit started as a port of a private Codex Desktop autonomy kit and has
+since diverged into a standalone Cowork tool. The two-tier instruction design (compact
+core + depth profile), the backup-before-install discipline, and the
+requested-vs-unrequested operating line came from that original; everything else
+(approve watcher, BOM-safe settings merge, staging-vs-live policy, Doctor/Uninstall,
+the elevated-dev-helper queue pattern as applied here) is kit-native.
 
 ## Computer-use authorization
 

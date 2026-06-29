@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    One-command toolchain + config bootstrap for the Claude Cowork Autonomy Kit on a fresh
-    Windows machine. Run NON-admin, from inside the kit folder, then restart Cowork.
+    One-command toolchain + config bootstrap for the Cowork Autonomy Kit on a fresh
+    Windows machine. Run NON-admin, then restart Cowork.
 
 .DESCRIPTION
     A clean Cowork/Windows box starts with no real Python (only the Microsoft Store stub),

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Read-only status dashboard for the Claude Cowork Autonomy Kit installation.
+    Read-only status dashboard for the Cowork Autonomy Kit installation.
 
 .DESCRIPTION
     Inventory of what's installed and configured on this box. Distinct from

@@ -1,5 +1,5 @@
 @echo off
-REM Double-click entry point for the Claude Cowork Autonomy Kit.
+REM Double-click entry point for the Cowork Autonomy Kit.
 REM Forwards to Setup-Autonomy.ps1 with -ExecutionPolicy Bypass and pauses at end
 REM so the console window stays open for the user to read the output.
 REM

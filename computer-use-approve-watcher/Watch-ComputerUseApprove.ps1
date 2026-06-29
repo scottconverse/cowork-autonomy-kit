@@ -1,6 +1,6 @@
 # Watch-ComputerUseApprove.ps1
 # Background watcher that auto-clicks the Claude computer-use / browser / webfetch
-# "Approve" dialog via Windows UI Automation. Part of claude-cowork-autonomy-kit.
+# "Approve" dialog via Windows UI Automation. Part of cowork-autonomy-kit.
 
 param(
     [string]   $TargetLabel  = 'Approve',

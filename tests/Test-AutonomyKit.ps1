@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Capability harness for the Claude Cowork Autonomy Kit (Part 1 of the test plan).
+    Capability harness for the Cowork Autonomy Kit (Part 1 of the test plan).
 
 .DESCRIPTION
     Proves the machine-level actions the kit is meant to enable actually execute, in a

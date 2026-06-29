@@ -1,0 +1,11 @@
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/autonomy-kit/CLAUDE-Cowork-Autonomous-Software-Development.md
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/autonomy-kit/CLAUDE-Cowork-Core.md
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/autonomy-kit/notify-turn-ended.ps1
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/autonomy-kit/settings.autonomy.example.json
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/CLAUDE-Cowork-Autonomous-Software-Development.md
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/CLAUDE.md
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/hooks/notify-turn-ended.ps1
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.claude/settings.json
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.local/bin/uv.exe
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.local/bin/uvw.exe
+C:/Users/Scott/AppData/Local/Temp/claude/C--Users-Scott-Desktop-CODE/f4944241-1e36-43a1-b31d-cc9bd3cd59da/scratchpad/gg-walkthrough/fakehome/.local/bin/uvx.exe
