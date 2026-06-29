@@ -2,6 +2,17 @@
 
 All notable changes to the Claude Cowork Autonomy Kit. Dates are UTC.
 
+## v1.4.1 — 2026-06-28
+
+### Added
+- `Install.cmd` at the repo root — **double-click entry point.** Forwards to
+  `Setup-Autonomy.ps1` with `-ExecutionPolicy Bypass`, pauses at end so the console
+  window stays open for the user to read output. Passes through any args
+  (e.g. `Install.cmd -SkipHelper`).
+- README "Quick start" now leads with the double-click path; documents that the
+  whole install triggers ONE Windows UAC prompt (the elevated-dev-helper install
+  in Setup step 8) and nothing else.
+
 ## v1.4.0 — 2026-06-28
 
 Cleared every finding from the v1.3.3 GauntletGate lite audit.

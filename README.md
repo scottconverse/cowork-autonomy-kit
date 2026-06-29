@@ -1,6 +1,6 @@
 # Claude Cowork Autonomy Kit
 
-**Version 1.4.0 · Windows · ported from the Codex Desktop Autonomy Kit** — see
+**Version 1.4.1 · Windows · ported from the Codex Desktop Autonomy Kit** — see
 [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
@@ -9,6 +9,8 @@ higher-priority instruction boundaries.
 
 ## Contents
 
+- `Install.cmd` — **double-click entry point.** Forwards to `Setup-Autonomy.ps1` with
+  `-ExecutionPolicy Bypass` and pauses at end so the console stays open.
 - `Setup-Autonomy.ps1` — **one-command fresh-machine bootstrap.** Installs the toolchain
   (Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright + browsers),
   the Cowork config (CLAUDE.md, hooks, settings), the approve watcher, and triggers the
@@ -39,7 +41,9 @@ OS/app boundaries.
 
 ## Quick start (fresh machine)
 
-From a clean Cowork/Windows box, clone the kit and run the bootstrap (non-admin):
+From a clean Cowork/Windows box, clone the kit, then either:
+
+**Double-click `Install.cmd`** at the repo root (easiest). Or, equivalently, from a terminal:
 
 ```powershell
 git clone https://github.com/scottconverse/claude-cowork-autonomy-kit.git
@@ -47,6 +51,11 @@ cd claude-cowork-autonomy-kit
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
 # then RESTART Cowork so PATH, CLAUDE.md, and hooks load
 ```
+
+Both paths trigger **one** Windows UAC prompt during setup — for the
+elevated-dev-helper install in step 8. Click Yes once. Everything else is
+user-scope, no admin. Pass `-SkipHelper` (terminal) or `Install.cmd -SkipHelper`
+to skip the helper install entirely.
 
 That installs the full toolchain and config below, idempotently, with **no admin**. The one
 admin step (the elevated dev helper) stays optional and prints its own UAC installer at the
