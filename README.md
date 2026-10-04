@@ -1,6 +1,6 @@
 # Cowork Autonomy Kit
 
-**Version 1.5.0 · Windows** — see [CHANGELOG.md](CHANGELOG.md).
+**Version 1.5.1 · Windows** — see [CHANGELOG.md](CHANGELOG.md).
 
 Private personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
 software-development autonomy on Windows machines, within Claude Code, operating-system, and
@@ -118,6 +118,9 @@ the keystone. Admin is available and reliable; it's just not the default.
 5. **Elevated helper:** `Setup-Autonomy.ps1` step 8 triggers the helper's UAC installer
    automatically when `ClaudeElevatedDevHelper` is absent. `-SkipHelper` to opt out. Manual
    path remains in `elevated-dev-helper/README.md`.
+   Existing installations must run the helper installer directly to refresh its worker and
+   invoker, then merge the new job-queue guidance into the live `~/.claude/CLAUDE.md`.
+   Installation succeeds only after administrator and Windows-path self-tests pass.
 6. **Notifications (optional):** Setup wires the `notify-turn-ended.ps1` Stop hook into
    `settings.json`. To replace it with your own, edit the live file at
    `~/.claude/hooks/notify-turn-ended.ps1`.

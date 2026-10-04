@@ -258,7 +258,8 @@ if (-not $SkipHelper) {
         Write-Host "ClaudeElevatedDevHelper already installed - skip"
     } elseif (Test-Path -LiteralPath $helperInstall) {
         Write-Host "launching helper installer (Windows UAC prompt expected)..."
-        Start-Process -FilePath $helperInstall -Verb RunAs -Wait
+        $helperProcess = Start-Process -FilePath $helperInstall -Verb RunAs -WindowStyle Hidden -Wait -PassThru
+        if ($helperProcess.ExitCode -ne 0) { throw "Helper installer failed with exit code $($helperProcess.ExitCode)." }
         $helperTask = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
         Write-Host ("helper: {0}" -f $(if ($helperTask) { 'installed' } else { 'NOT installed (UAC declined or installer error)' }))
     } else {

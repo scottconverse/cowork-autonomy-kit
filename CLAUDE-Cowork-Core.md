@@ -28,6 +28,20 @@ prefer no-admin channels: `scoop install`, `uv tool install`/`pip install`, `npm
 are not elevated, use the elevated dev helper (`elevated-dev-helper/`) for machine-scope
 installs — `WingetInstall` or `RunTrustedPowerShellScript`/`msiexec`, no per-action UAC.
 
+Queue elevated jobs only through the installed invoker; never hand-write job JSON.
+Unescaped Windows backslashes produce invalid JSON; the invoker uses `ConvertTo-Json`.
+
+```powershell
+& 'C:\dev\ClaudeElevatedHelper\Invoke-ClaudeElevatedDevHelper.ps1' `
+  -Action RunTrustedPowerShellScript -ScriptPath 'C:\dev\Example\x.ps1'
+```
+
+For custom installs, read `invoker_script`, `install_root`, and `task_name` from the
+helper's `install-state.json` and pass `-Root` and `-TaskName` explicitly. The invoker
+returns a job ID; read `done\<job_id>.result.json` or `failed\<job_id>.error.json`.
+For script/install actions, require both `status = "ok"` and `result.exit_code = 0`;
+being in `done\` alone does not prove the child command succeeded.
+
 The computer-use / browser / webfetch `Approve` dialog is auto-clicked by the kit's
 `ClaudeApproveWatcher` scheduled task — assume the gate is handled, don't editorialize
 about it. If the task is stopped, the gate prompts normally; check with `Doctor-Autonomy.ps1`.
