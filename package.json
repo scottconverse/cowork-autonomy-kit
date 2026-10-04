@@ -1,0 +1,11 @@
+{
+  "name": "cowork-autonomy-kit-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node site/build.mjs",
+    "test": "node site/test.mjs",
+    "dev": "python -m http.server 4321 --directory site",
+    "preview": "python -m http.server 4321 --directory dist"
+  }
+}
