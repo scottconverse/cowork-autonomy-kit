@@ -56,8 +56,16 @@ The one-time installer must be launched from an elevated PowerShell session beca
 UAC controls creation of highest-privilege scheduled tasks.
 
 For a click-driven install, double-click `Install-ClaudeElevatedDevHelper-AsAdmin.cmd` and
-approve the Windows UAC prompt. A successful install reports an install location and a
-self-test result where `is_admin` is `true`.
+approve the Windows UAC prompt. A successful install copies both the worker and invoker,
+records `invoker_script` in `install-state.json`, and verifies administrator execution
+and a script path containing spaces and backslashes through the installed invoker.
+Failure or timeout produces a nonzero installer exit; `installed` stays false.
+The failure warning names the retained scheduled task, helper folder, and installation
+log. These remain available for repair; verification failure does not unregister the task.
+
+For existing installs, rerun this helper installer directly. The main Setup script skips
+an existing helper task and preserves live `~/.claude/CLAUDE.md`; update that document
+from the revised Core instructions separately, retaining any personal changes.
 
 After installation, the helper root defaults to `C:\dev\ClaudeElevatedHelper`, with
 `queue/`, `done/`, `failed/`, and `logs/` subfolders plus `install-log.txt` and
@@ -68,11 +76,16 @@ Use `Test-ElevationState.ps1` only to inspect the process where it is launched.
 ## How Claude Uses It
 
 ```powershell
-.\Invoke-ClaudeElevatedDevHelper.ps1 -Action WingetInstall -PackageId Git.Git
+& 'C:\dev\ClaudeElevatedHelper\Invoke-ClaudeElevatedDevHelper.ps1' -Action WingetInstall -PackageId Git.Git
 ```
 
 Claude then reads `C:\dev\ClaudeElevatedHelper\done\<job_id>.result.json` (or the matching
 `failed\` file) and continues. Non-admin work proceeds while the job runs.
+
+Never hand-write job JSON: unescaped backslashes are invalid JSON. For custom installs,
+use the metadata's invoker path and pass `-Root <install_root> -TaskName <task_name>`.
+Require `status = "ok"` and, for process actions, `result.exit_code = 0`.
+A result in `done\` may contain a nonzero child exit code.
 
 ## Reuse On Other Machines
 

@@ -83,6 +83,11 @@ proceeds anyway, or argues.
 
 ## Part 4 — Elevated helper capability (admin path)
 
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Test-HelperInstall.ps1`
+for isolated installer/result regressions. The helper installer also executes its installed
+invoker with a real script under `Self Test Path\Windows Path Test.ps1`; require
+`status = "ok"`, `result.exit_code = 0`, exact script-path output, and elevation.
+
 Proves the no-UAC admin path works, once the elevated helper is installed
 (`elevated-dev-helper/Install-ClaudeElevatedDevHelper-AsAdmin.cmd`).
 
@@ -94,7 +99,7 @@ Proves the no-UAC admin path works, once the elevated helper is installed
 3. Read the result at `C:\dev\ClaudeElevatedHelper\done\<job>.result.json`.
 4. Also run a machine-scope install: `-Action WingetInstall -PackageId <pkg>`.
 
-**PASS:** each job lands in `done\` with `status=ok`; the captured output shows
+**PASS:** each process job lands in `done\` with `status=ok` and `result.exit_code=0`; the captured output shows
 `is_admin=True` and every admin-only op succeeded; the artifacts are visible from a normal
 non-admin shell; the winget install completes cleanly. Clean up the test artifacts with a
 second trusted script.

@@ -2,6 +2,21 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v1.5.1 — 2026-10-04
+
+### Fixed
+- On helper verification failure, explicitly report the retained elevated task,
+  helper folder, and log location while preserving the original error and failed exit.
+- Install the elevated job invoker and record its path in installation metadata.
+  Document JSON-safe job submission, custom roots/tasks, and existing-install refresh.
+- Separately, fail helper installation on failed/timed-out self-tests. Verify a real
+  Windows script path containing spaces through the installed invoker, require child
+  exit code zero, and mark installation successful only after both self-tests pass.
+
+### Added
+- `tests/Test-HelperInstall.ps1`: installed-file, JSON round-trip, custom task,
+  result validation, missing-source, and timeout regressions.
+
 ## v1.5.0 — 2026-06-28
 
 Cleared the 6 remaining "actual concerns worth fixing" from the GauntletGate-full
