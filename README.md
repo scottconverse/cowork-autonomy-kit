@@ -23,6 +23,7 @@ Existing helper installations require a direct helper-installer rerun, plus a ma
 
 ## Documentation
 
+- [Comprehensive developer user manual](docs/DEVELOPER-MANUAL.md)
 - [Detailed setup and safety notes](docs/SETUP.md)
 - [Elevated helper](elevated-dev-helper/README.md)
 - [Core instructions](CLAUDE-Cowork-Core.md)
