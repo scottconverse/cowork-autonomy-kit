@@ -2,6 +2,24 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## Unreleased
+
+### Fixed
+- Accept equivalent Windows ACL ordering/bookkeeping while verifying owner, inheritance protection and every access rule.
+- Count missing optional Doctor permission lists as zero.
+- Preserve spaces, quotes, empty arguments and trailing backslashes through the elevated helper.
+- Publish complete helper result/error JSON atomically and preserve existing results on collision.
+- Update unchanged kit-owned profiles while preserving custom instructions and the first pre-kit snapshots.
+- Validate nested permission/hook shapes before configuration writes.
+- Repair stale or unverified helper installations; keep custom roots/task names and a canonical discovery record.
+- Preserve current owner edits in recovery backups before restoring pre-kit snapshots.
+- Return a failing Setup exit code for missing required tools or failed browser installation.
+
+### Verification
+- Add audit regression tests using production functions, isolated profiles and a real argument-echo child executable; include them in the existing Windows CI job.
+- Post-release verification on an existing Windows installation passed elevated helper self-tests and a fresh desktop Code session with file create/read/delete and CheckAdmin. A clean-machine installation remains unverified.
+- The v1.6.0 tagged ZIP remains unchanged; these fixes are working-source changes until a new release is published.
+
 ## v1.6.0 - 2026-10-09
 
 ### Changed

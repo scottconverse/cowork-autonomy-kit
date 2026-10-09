@@ -11,7 +11,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($test in @('Test-SettingsMerge','Test-UninstallBakFilter','Test-Lifecycle','Test-NoBOM','Test-NoHardcodedPaths','Test-HelperInstall')) {
+          foreach ($test in @('Test-SettingsMerge','Test-UninstallBakFilter','Test-Lifecycle','Test-NoBOM','Test-NoHardcodedPaths','Test-HelperInstall','Test-AuditRegressions')) {
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "tests/$test.ps1"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }

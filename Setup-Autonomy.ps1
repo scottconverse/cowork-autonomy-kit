@@ -3,7 +3,7 @@
     Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 .DESCRIPTION
     Shows changes and asks for confirmation unless -Yes. Installs missing user-scope tools,
-    merges settings, snapshots original files once, preserves existing live instructions,
+    merges settings, snapshots original files once, updates unchanged kit instructions and preserves customized live instructions,
     and optionally launches a visible UAC helper installer. The Cowork tab is out of scope.
 .PARAMETER SkipBypass
     Leave defaultMode unchanged while applying other selected setup changes.
@@ -57,6 +57,22 @@ function Read-KitSettings {
         foreach ($key in @('permissions','hooks')) {
             if ($value.PSObject.Properties.Name -contains $key -and $value.$key -isnot [pscustomobject]) { throw "$key must be an object" }
         }
+        foreach ($key in @('allow','ask','deny','additionalDirectories')) {
+            if ($value.permissions -and $value.permissions.PSObject.Properties.Name -contains $key) {
+                if ($value.permissions.$key -isnot [array] -or @($value.permissions.$key | Where-Object { $_ -isnot [string] }).Count) { throw "permissions.$key must be an array of strings" }
+            }
+        }
+        if ($value.hooks) {
+            foreach ($event in $value.hooks.PSObject.Properties) {
+                if ($event.Value -isnot [array]) { throw "hooks.$($event.Name) must be an array" }
+                foreach ($entry in $event.Value) {
+                    if ($entry -isnot [pscustomobject] -or $entry.hooks -isnot [array]) { throw "hooks.$($event.Name) entries must contain a hooks array" }
+                    foreach ($hook in $entry.hooks) {
+                        if ($hook -isnot [pscustomobject]) { throw "hooks.$($event.Name) handlers must be objects" }
+                    }
+                }
+            }
+        }
         return $value
     } catch { throw "Invalid settings file '$Path': $($_.Exception.Message). Nothing was written." }
 }
@@ -71,10 +87,15 @@ function New-PreKitSnapshot {
 }
 
 function Install-LiveOrLeave {
-    param([string]$Source, [string]$Destination)
+    param([string]$Source, [string]$Destination, [string]$PreviousStage)
     if (Test-Path -LiteralPath $Destination) {
+        $liveHash = (Get-FileHash -LiteralPath $Destination).Hash
+        if ($liveHash -eq (Get-FileHash -LiteralPath $Source).Hash) { return }
         Copy-Item -LiteralPath $Destination -Destination "$Destination.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss-fffffff'))"
-        Write-Host "Kept customized or existing live file: $Destination"
+        if ($PreviousStage -and (Test-Path -LiteralPath $PreviousStage) -and $liveHash -eq (Get-FileHash -LiteralPath $PreviousStage).Hash) {
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+            Write-Host "Updated unchanged kit-owned live file: $Destination"
+        } else { Write-Host "Kept customized or existing live file: $Destination" }
     } else { Copy-Item -LiteralPath $Source -Destination $Destination }
 }
 
@@ -134,8 +155,9 @@ function Install-KitConfiguration {
     )
     foreach ($pair in $pairs) {
         $source = Join-Path $KitRoot $pair[0]
-        Copy-Item -LiteralPath $source -Destination (Join-Path $stage (Split-Path -Leaf $source)) -Force
-        Install-LiveOrLeave -Source $source -Destination (Join-Path $ClaudeRoot $pair[1])
+        $staged = Join-Path $stage (Split-Path -Leaf $source)
+        Install-LiveOrLeave -Source $source -Destination (Join-Path $ClaudeRoot $pair[1]) -PreviousStage $staged
+        Copy-Item -LiteralPath $source -Destination $staged -Force
     }
     Copy-Item -LiteralPath (Join-Path $KitRoot 'settings.autonomy.example.json') -Destination $stage -Force
     if (Test-Path -LiteralPath $settingsPath) { Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss-fffffff'))" }
@@ -148,10 +170,47 @@ function Install-KitConfiguration {
     Write-Host "Merged Claude Code settings and staged profiles at $stage"
 }
 
-Write-Host 'Setup will install missing developer tools, merge Claude Code settings, preserve live CLAUDE.md, and wire the notification hook.'
+function Get-RegisteredKitHelper {
+    param([string]$StatePath)
+    $name = 'ClaudeElevatedDevHelper'
+    if (Test-Path -LiteralPath $StatePath) {
+        $state = Get-Content -LiteralPath $StatePath -Raw | ConvertFrom-Json -ErrorAction Stop
+        if ($state.task_name) { $name = [string]$state.task_name }
+    }
+    return Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
+}
+
+function Test-InstalledHelperCurrent {
+    param($Task, [string]$StatePath, [string]$SourceRoot)
+    try {
+        if (-not $Task -or -not (Test-Path -LiteralPath $StatePath)) { return $false }
+        $state = Get-Content -LiteralPath $StatePath -Raw | ConvertFrom-Json -ErrorAction Stop
+        if ($state.installed -isnot [bool] -or -not $state.installed -or $state.task_name -ne $Task.TaskName -or -not $state.install_root -or -not $state.data_root) { return $false }
+        $actions = @($Task.Actions)
+        if ($actions.Count -ne 1 -or $Task.Principal.RunLevel -ne 'Highest' -or $Task.Settings.MultipleInstances -ne 'IgnoreNew') { return $false }
+        foreach ($name in @('ClaudeElevatedDevHelper.ps1','Invoke-ClaudeElevatedDevHelper.ps1','Test-InstalledHelperPath.ps1')) {
+            $installed = Join-Path $state.install_root $name
+            if (-not (Test-Path -LiteralPath $installed) -or (Get-FileHash -LiteralPath $installed).Hash -ne (Get-FileHash -LiteralPath (Join-Path $SourceRoot $name)).Hash) { return $false }
+        }
+        if ($state.helper_script -ne (Join-Path $state.install_root 'ClaudeElevatedDevHelper.ps1') -or $state.invoker_script -ne (Join-Path $state.install_root 'Invoke-ClaudeElevatedDevHelper.ps1')) { return $false }
+        return ([IO.Path]::GetFileName($actions[0].Execute) -ieq 'powershell.exe' -and
+            $actions[0].Arguments -ceq ('-NoProfile -ExecutionPolicy Bypass -File "' + $state.helper_script + '" -Root "' + $state.data_root + '"'))
+    } catch { return $false }
+}
+
+function Assert-KitSetupSucceeded {
+    param([System.Collections.IDictionary]$Report, [string[]]$FailedSteps)
+    $missing = @($Report.Keys | Where-Object { $Report[$_] -ne 'OK' })
+    if ($missing.Count -or $FailedSteps.Count) {
+        throw ('Setup incomplete. Missing tools: {0}. Failed steps: {1}. Correct the errors and rerun Setup.' -f ($missing -join ', '), ($FailedSteps -join ', '))
+    }
+}
+
+Write-Host 'Setup will install missing developer tools, merge Claude Code settings, preserve customized live CLAUDE.md, and wire the notification hook.'
 Write-Host ('Bypass mode: ' + $(if ($SkipBypass) { 'unchanged (-SkipBypass)' } else { 'defaultMode=bypassPermissions; existing ask/deny retained' }))
 Write-Host ('Elevated helper: ' + $(if ($SkipHelper) { 'skipped' } else { 'optional administrator helper; Windows UAC if installation is needed' }))
 if (-not $Yes -and (Read-Host 'Continue? [y/N]') -notmatch '^(?i)y(es)?$') { Write-Host 'Cancelled; no changes made.'; return }
+$setupFailures = @()
 
 # ---------------------------------------------------------------- 1. Python + python3 shim
 Step "Python (user-scope) + python3 shim"
@@ -237,6 +296,7 @@ if ($py3cmd) {
     if ($LASTEXITCODE -ne 0) {
         & $py3cmd -m pip install --quiet playwright
         if ($LASTEXITCODE -ne 0) {
+            $setupFailures += 'Playwright package installation'
             Write-Warning "pip install playwright FAILED (exit $LASTEXITCODE). Re-run Setup or run: python3 -m pip install playwright"
         } else {
             Write-Host "playwright: installed"
@@ -249,6 +309,7 @@ if ($py3cmd) {
         if (-not $SkipBrowsers) {
             & $py3cmd -m playwright install chromium
             if ($LASTEXITCODE -ne 0) {
+                $setupFailures += 'Chromium browser installation'
                 Write-Warning "playwright install chromium FAILED (exit $LASTEXITCODE). Re-run: python3 -m playwright install chromium"
             } else {
                 Write-Host "playwright: chromium installed"
@@ -269,18 +330,21 @@ if (-not $SkipConfig) {
 # ------------------------------------------------------------------- 8. elevated-dev-helper
 if (-not $SkipHelper) {
     Step "elevated dev helper (UAC prompt if not already installed)"
-    $helperTask    = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
     $helperInstall = Join-Path $kit "elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd"
-    if ($helperTask) {
-        Write-Host "ClaudeElevatedDevHelper already installed - skip"
+    $helperState = Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json'
+    $helperTask = Get-RegisteredKitHelper -StatePath $helperState
+    $helperSource = Join-Path $kit 'elevated-dev-helper'
+    if (Test-InstalledHelperCurrent -Task $helperTask -StatePath $helperState -SourceRoot $helperSource) {
+        Write-Host "$($helperTask.TaskName) verified and current - skip"
     } elseif (Test-Path -LiteralPath $helperInstall) {
         Write-Host "launching helper installer (Windows UAC prompt expected)..."
         $helperProcess = Start-Process -FilePath $helperInstall -Verb RunAs -WindowStyle Normal -Wait -PassThru
         if ($helperProcess.ExitCode -ne 0) { throw "Helper installer failed with exit code $($helperProcess.ExitCode)." }
-        $helperTask = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
-        Write-Host ("helper: {0}" -f $(if ($helperTask) { 'installed' } else { 'NOT installed (UAC declined or installer error)' }))
+        $helperTask = Get-RegisteredKitHelper -StatePath $helperState
+        if (-not (Test-InstalledHelperCurrent -Task $helperTask -StatePath $helperState -SourceRoot $helperSource)) { throw 'Helper installer exited without a verified, current installation. Inspect install-log.txt and repair before retrying.' }
+        Write-Host 'helper: installed and verified'
     } else {
-        Write-Warning "helper installer not found: $helperInstall"
+        throw "helper installer not found: $helperInstall"
     }
 }
 
@@ -292,6 +356,7 @@ foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','s
     $report[$t] = if ($src) { 'OK' } else { 'missing (open a new shell)' }
 }
 $report.GetEnumerator() | ForEach-Object { "{0,-10} {1}" -f $_.Key, $_.Value } | Write-Host
+Assert-KitSetupSucceeded -Report $report -FailedSteps $setupFailures
 
 Write-Host "`nNEXT:" -ForegroundColor Green
 Write-Host "  1. In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions."

@@ -7,12 +7,12 @@ Serves Claude Code sessions in the desktop Code tab and CLI running as a normal,
 Run Install-ClaudeElevatedDevHelper-AsAdmin.cmd and approve UAC. The installer remains visible, propagates errors, and verifies administrator execution plus an installed-invoker script path containing spaces.
 
 - Worker, invoker and path-test script: `%ProgramFiles%\ClaudeElevatedHelper\`, protected from non-admin writes.
-- Queue, done, failed, logs, install-state.json and install-log.txt: `%ProgramData%\ClaudeElevatedHelper\`.
-- Read install-state.json for data_root, install_root, invoker_script and task_name. Invoker defaults discover this state.
-- Administrators and SYSTEM have full control. The installing user has Modify on queue only and Read on results, logs and state. ACLs are explicitly written, read back and checked; mismatch fails installation.
+- Queue, done, failed, logs and install-log.txt default to: `%ProgramData%\ClaudeElevatedHelper\`.
+- Discovery state always lives at `%ProgramData%\ClaudeElevatedHelper\install-state.json`, including custom data roots. Read it for data_root, install_root, invoker_script and task_name. Invoker defaults discover this state; repair preserves recorded custom paths unless explicitly overridden.
+- Administrators and SYSTEM have full control. The installing user has Modify on queue only and Read on results, logs and state. ACLs are explicitly written and read back. Owner, protection and all access rules must match; equivalent ACE ordering and Windows bookkeeping flags are accepted.
 - A new C:\dev folder permits writes only by Administrators, SYSTEM and the installing user. An existing folder is inspected and broad write grants are warned about without changing its ACL.
 
-The installer re-registers an old task against the new worker and data paths. An existing C:\dev\ClaudeElevatedHelper folder is retained; inspect pending jobs before deleting it. Custom roots must preserve the same protected-code and separate-data boundary.
+Setup repairs stale installed program files, task configuration or unverified state. The installer re-registers an old task against the new worker and data paths. An existing C:\dev\ClaudeElevatedHelper folder is retained; inspect pending jobs before deleting it. Custom roots must preserve the same protected-code and separate-data boundary.
 
 ## Submit and verify
 
@@ -21,7 +21,7 @@ $state = Get-Content (Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-s
 & $state.invoker_script -Action CheckAdmin
 ```
 
-The invoker atomically publishes a complete JSON job and triggers the scheduled task. Read done\<job_id>.result.json or failed\<job_id>.error.json under data_root. Require status=ok and, for child processes, result.exit_code=0. A done file alone does not prove the process succeeded.
+The invoker atomically publishes a complete JSON job and triggers the scheduled task. The worker publishes complete result/error JSON through sibling-file rename. Script arguments preserve empty strings, spaces, quotes and trailing backslashes. Read done\<job_id>.result.json or failed\<job_id>.error.json under data_root. Require status=ok and, for child processes, result.exit_code=0. A done file alone does not prove the process succeeded.
 
 ## Supported actions and trust
 

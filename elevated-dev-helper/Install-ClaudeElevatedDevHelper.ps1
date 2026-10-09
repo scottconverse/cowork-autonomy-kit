@@ -7,6 +7,21 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
+function Resolve-HelperInstallConfiguration {
+    param([string]$InstallRoot, [string]$DataRoot, [string]$TaskName, [string[]]$ExplicitParameters)
+    $statePath = Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json'
+    # Keep the discovery record in one stable place even with custom data roots.
+    # Reinstall/repair preserves custom paths unless the caller explicitly replaces them.
+    if ((Test-Path -LiteralPath $statePath) -and @('InstallRoot','DataRoot','TaskName' | Where-Object { $ExplicitParameters -notcontains $_ }).Count) {
+        try { $old = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -ErrorAction Stop }
+        catch { throw "Invalid helper discovery state '$statePath'. Repair it or explicitly supply InstallRoot, DataRoot and TaskName." }
+        if ($ExplicitParameters -notcontains 'InstallRoot' -and $old.install_root) { $InstallRoot = [string]$old.install_root }
+        if ($ExplicitParameters -notcontains 'DataRoot' -and $old.data_root) { $DataRoot = [string]$old.data_root }
+        if ($ExplicitParameters -notcontains 'TaskName' -and $old.task_name) { $TaskName = [string]$old.task_name }
+    }
+    return @{InstallRoot=$InstallRoot;DataRoot=$DataRoot;TaskName=$TaskName;StatePath=$statePath}
+}
+
 function Install-HelperFiles {
     param([string]$SourceRoot, [string]$InstallRoot)
     $names = @('ClaudeElevatedDevHelper.ps1', 'Invoke-ClaudeElevatedDevHelper.ps1', 'Test-InstalledHelperPath.ps1')
@@ -72,13 +87,30 @@ function New-HelperAcl {
     return $acl
 }
 
+function Test-HelperAclEquivalent {
+    param($Actual, $Expected)
+    # Windows may reorder equivalent ACEs and add auto-inheritance bookkeeping.
+    # Compare every effective rule, the owner, and inheritance protection instead.
+    $sidType = [Security.Principal.SecurityIdentifier]
+    if ($Actual.GetOwner($sidType).Value -ne $Expected.GetOwner($sidType).Value -or
+        $Actual.AreAccessRulesProtected -ne $Expected.AreAccessRulesProtected) { return $false }
+    $rules = foreach ($acl in @($Actual, $Expected)) {
+        $entries = @($acl.GetAccessRules($true,$true,$sidType) | ForEach-Object {
+            '{0}|{1}|{2}|{3}|{4}|{5}' -f $_.IdentityReference.Value,[long]$_.FileSystemRights,
+                $_.AccessControlType,$_.InheritanceFlags,$_.PropagationFlags,$_.IsInherited
+        } | Sort-Object)
+        ,$entries
+    }
+    return ($rules[0].Count -eq $rules[1].Count -and
+        ($rules[0] -join "`n") -ceq ($rules[1] -join "`n"))
+}
+
 function Set-VerifiedHelperAcl {
     param([string]$Path, [string]$UserSid, [string]$Kind)
     $expected = New-HelperAcl -UserSid $UserSid -Kind $Kind
     Set-Acl -LiteralPath $Path -AclObject $expected -ErrorAction Stop
     $actual = Get-Acl -LiteralPath $Path -ErrorAction Stop
-    $sections = [Security.AccessControl.AccessControlSections]'Access,Owner'
-    if ($actual.GetSecurityDescriptorSddlForm($sections) -ne $expected.GetSecurityDescriptorSddlForm($sections)) {
+    if (-not (Test-HelperAclEquivalent -Actual $actual -Expected $expected)) {
         throw "Helper ACL verification failed for $Path"
     }
 }
@@ -105,8 +137,7 @@ function Initialize-DevelopmentRoot {
         $acl = New-HelperAcl -UserSid $UserSid -Kind Queue
         Set-Acl -LiteralPath $Path -AclObject $acl -ErrorAction Stop
         $actual = Get-Acl -LiteralPath $Path
-        $sections = [Security.AccessControl.AccessControlSections]'Access,Owner'
-        if ($actual.GetSecurityDescriptorSddlForm($sections) -ne $acl.GetSecurityDescriptorSddlForm($sections)) { throw "Development root ACL mismatch: $Path" }
+        if (-not (Test-HelperAclEquivalent -Actual $actual -Expected $acl)) { throw "Development root ACL mismatch: $Path" }
         Write-Host "Created ${Path}: write access limited to Administrators, SYSTEM and installing user"
     } else {
         $allowed = @('S-1-5-32-544','S-1-5-18',$UserSid)
@@ -120,6 +151,9 @@ function Initialize-DevelopmentRoot {
 }
 
 Assert-Admin
+
+$configuration = Resolve-HelperInstallConfiguration -InstallRoot $InstallRoot -DataRoot $DataRoot -TaskName $TaskName -ExplicitParameters @($PSBoundParameters.Keys)
+$InstallRoot = $configuration.InstallRoot; $DataRoot = $configuration.DataRoot; $TaskName = $configuration.TaskName
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $userId = $identity.Name
@@ -158,7 +192,12 @@ $state = @{
     user_id = $userId
     installed_at = (Get-Date).ToUniversalTime().ToString("o")
 }
-$statePath = Join-Path $DataRoot 'install-state.json'
+$statePath = $configuration.StatePath
+$stateDirectory = Split-Path -Parent $statePath
+if ([IO.Path]::GetFullPath($stateDirectory).TrimEnd('\') -ne [IO.Path]::GetFullPath($DataRoot).TrimEnd('\')) {
+    New-Item -ItemType Directory -Force -Path $stateDirectory | Out-Null
+    Set-VerifiedHelperAcl -Path $stateDirectory -UserSid $userSid -Kind ReadDirectory
+}
 $state | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $statePath -Encoding UTF8
 Set-VerifiedHelperAcl -Path $statePath -UserSid $userSid -Kind ReadFile
 
@@ -185,7 +224,7 @@ try {
     $state.admin_test_job = $adminJob.job_id
     $state.path_test_job = $pathJob.job_id
     $state | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $statePath -Encoding UTF8
-Set-VerifiedHelperAcl -Path $statePath -UserSid $userSid -Kind ReadFile
+    Set-VerifiedHelperAcl -Path $statePath -UserSid $userSid -Kind ReadFile
     "[$((Get-Date).ToUniversalTime().ToString('o'))] Administrator and Windows-path self-tests passed." | Add-Content -LiteralPath $installLog -Encoding UTF8
 } catch {
     Write-Warning "Verification failed. Scheduled task '$TaskName' remains registered, and helper files remain at '$InstallRoot'. Review '$installLog' before using the helper."

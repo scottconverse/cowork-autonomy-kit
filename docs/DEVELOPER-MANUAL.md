@@ -38,13 +38,13 @@ Fully quit Claude (right-click the Claude icon in the system tray, Quit), then o
 
 Desktop and CLI share settings and CLAUDE.md. Setup merges bypassPermissions, initializes absent ask/deny arrays and preserves existing rules and unrelated keys. -SkipBypass preserves defaultMode. It does not hide Anthropic warning dialogs.
 
-Setup installs the Core as CLAUDE.md and the depth profile alongside it. The Core has a standalone @CLAUDE-Cowork-Autonomous-Software-Development.md import; it loads every session and costs context. Existing live files are backed up and preserved. Doctor reports the exact live import. Add the import manually if missing in a customized CLAUDE.md.
+Setup installs the Core as CLAUDE.md and the depth profile alongside it. The Core has a standalone @CLAUDE-Cowork-Autonomous-Software-Development.md import; it loads every session and costs context. Unchanged kit-owned live files update using the previous staged copy as the ownership baseline. Customized live files are backed up and preserved. Doctor reports the exact live import. Add the import manually if missing in a customized CLAUDE.md.
 
 ## 6. Helper installation and filesystem layout
 
-The helper serves normal, non-elevated Code tab and CLI sessions. The visible UAC installer puts protected worker/invoker/path-test files in %ProgramFiles%\ClaudeElevatedHelper. Data and install-state.json live in %ProgramData%\ClaudeElevatedHelper. Custom paths are recorded in that state; code and data must be separate.
+The helper serves normal, non-elevated Code tab and CLI sessions. The visible UAC installer puts protected worker/invoker/path-test files in %ProgramFiles%\ClaudeElevatedHelper. Data defaults to %ProgramData%\ClaudeElevatedHelper. Discovery state always lives at %ProgramData%\ClaudeElevatedHelper\install-state.json, even with a custom data root. Recorded custom paths survive repair unless explicitly overridden; code and data must be separate.
 
-The task points at the Program Files worker and passes the ProgramData data_root as -Root. Administrators/SYSTEM have FullControl. The installing user gets Modify only on queue, and Read on done, failed, logs and state. Installer reads ACLs back and refuses mismatches. Protected executable files permit no ordinary-user writes.
+The task points at the Program Files worker and passes the ProgramData data_root as -Root. Administrators/SYSTEM have FullControl. The installing user gets Modify only on queue, and Read on done, failed, logs and state. Installer reads ACLs back and compares owner, inheritance protection and every access rule, accepting equivalent Windows ordering and bookkeeping flags while refusing permission mismatches. Protected executable files permit no ordinary-user writes.
 
 Migration re-registers the old task to the new paths. The old C:\dev\ClaudeElevatedHelper folder remains; inspect pending jobs before deletion. Installation requires real administrator and installed-invoker path-with-spaces self-tests. Failure retains task/files for repair and reports the log location.
 
@@ -56,11 +56,11 @@ User-script roots: C:\dev\ and the task user's Documents\Claude\. .claude and Te
 
 ## 8. Queue, results and logs
 
-The invoker publishes JSON atomically. The worker serially processes snapshots and rechecks until empty. MultipleInstances remains IgnoreNew. A narrow race after the last empty check and before exit remains; another trigger may be needed for a late job. Read result status and child exit_code; done alone is not process success. Logs and results are readable by the user but not writable outside queue.
+The invoker publishes jobs atomically; the worker also publishes complete results and errors by renaming a sibling temporary file. Child-process arguments preserve spaces, embedded quotes, empty strings and trailing backslashes. The worker serially processes snapshots and rechecks until empty. MultipleInstances remains IgnoreNew. A narrow race after the last empty check and before exit remains; another trigger may be needed for a late job. Read result status and child exit_code; done alone is not process success. Logs and results are readable by the user but not writable outside queue.
 
 ## 9. Updating and recovery
 
-Run Uninstall first to remove any old watcher task. Rerun the helper installer, then Setup. Add the depth import to a customized CLAUDE.md. Repair malformed settings before retrying: Setup names the bad file, throws and leaves it unchanged. First pre-kit snapshots are never replaced by reruns; timestamped backups remain additional recovery material.
+Run Uninstall first to remove any old watcher task. Setup repairs a helper when verified state, installed program hashes or task configuration are stale. It preserves recorded custom paths; the helper installer can also be run directly. Add the depth import to a customized CLAUDE.md. Repair malformed settings before retrying: Setup validates JSON and nested permission/hook shapes, names the bad file, throws and leaves configuration unchanged. Missing tools or failed browser installation produce a failing exit code. First pre-kit snapshots are never replaced by reruns; timestamped backups remain additional recovery material.
 
 ## 10. Diagnostics and troubleshooting
 
@@ -78,13 +78,13 @@ Doctor is read-only. It reports tools/Chromium, configuration, depth import, rem
 
 ## 11. Testing and verification
 
-Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths and HelperInstall, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
+Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths, HelperInstall and AuditRegressions, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
 
-No clean-machine installation or live desktop-app test was performed. ACL construction/readback and queue behavior have isolated regression tests; only Scott's later live test can establish actual installed ACLs, UAC and desktop behavior.
+The tagged release had no clean-machine or live desktop test. Post-release verification on an existing Windows installation passed elevated installation, ACL readback, installed-invoker self-tests and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
 
 ## 12. Uninstallation and rollback
 
-Restore the first settings.json and CLAUDE.md pre-autonomy-kit snapshots. An absent marker allows removal only if live bytes still match the staged kit copy. Modified files remain. For older installs without snapshots, strip only the kit bypass default and notify hook; do not restore a newest timestamped backup. WhatIf performs no writes, including in the legacy strip branch. Writes are UTF-8 without BOM. General-purpose tools stay installed. -RemoveHelper additionally unregisters the helper task; installed helper files and data remain.
+Restore the first settings.json and CLAUDE.md pre-autonomy-kit snapshots. Before restoration, preserve current files in unique .before-uninstall-*.bak backups so later edits remain recoverable. An absent marker allows removal only if live bytes still match the staged kit copy. Modified files remain. For older installs without snapshots, strip only the kit bypass default and notify hook; do not restore a newest timestamped backup. WhatIf performs no writes, including in the legacy strip branch. Writes are UTF-8 without BOM. General-purpose tools stay installed. -RemoveHelper additionally unregisters the helper task; installed helper files and data remain.
 
 ## 13. Repository, website and releases
 

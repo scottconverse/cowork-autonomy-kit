@@ -61,10 +61,10 @@ if (Test-Path $sp) {
         $s = Get-Content -LiteralPath $sp -Raw | ConvertFrom-Json
         L "settings.json" $sp
         L "  defaultMode"   $(if ($s.permissions) { "$($s.permissions.defaultMode)" } else { '(no permissions block)' })
-        L "  ask entries"   ("{0}" -f @($s.permissions.ask).Count)
-        L "  deny entries"  ("{0}" -f @($s.permissions.deny).Count)
-        L "  allow entries" ("{0}" -f @($s.permissions.allow).Count)
-        $ad = @($s.permissions.additionalDirectories)
+        L "  ask entries"   ("{0}" -f @($s.permissions.ask | Where-Object { $null -ne $_ }).Count)
+        L "  deny entries"  ("{0}" -f @($s.permissions.deny | Where-Object { $null -ne $_ }).Count)
+        L "  allow entries" ("{0}" -f @($s.permissions.allow | Where-Object { $null -ne $_ }).Count)
+        $ad = @($s.permissions.additionalDirectories | Where-Object { $null -ne $_ })
         L "  additionalDirs" ("{0} entries" -f $ad.Count)
         foreach ($d in $ad) {
             $marker = if ("$d" -match 'YOUR_USERNAME') { ' <-- UNRESOLVED PLACEHOLDER' } else { '' }
