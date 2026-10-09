@@ -3,8 +3,8 @@ param(
     [ValidateSet("CheckAdmin","WingetInstall","WingetUpgrade","RunTrustedPowerShellScript","StartService","StopService","RestartService","OpenDevFirewallPort","RegisterDevScheduledTask")]
     [string]$Action,
 
-    [string]$Root = "C:\dev\ClaudeElevatedHelper",
-    [string]$TaskName = "ClaudeElevatedDevHelper",
+    [string]$Root,
+    [string]$TaskName,
     [string]$PackageId,
     [string]$Scope,
     [string]$ScriptPath,
@@ -16,6 +16,15 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+$statePath = Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json'
+if ((-not $Root -or -not $TaskName) -and (Test-Path -LiteralPath $statePath)) {
+    $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+    if (-not $Root) { $Root = [string]$state.data_root }
+    if (-not $TaskName) { $TaskName = [string]$state.task_name }
+}
+if (-not $Root) { throw "Helper data root not recorded in $statePath; install or migrate the helper first." }
+if (-not $TaskName) { $TaskName = 'ClaudeElevatedDevHelper' }
 
 if (-not (Test-Path -LiteralPath $Root)) {
     throw "Helper root not found: $Root"
@@ -41,7 +50,9 @@ if ($Protocol) { $job.protocol = $Protocol }
 if ($DevTaskName) { $job.taskName = $DevTaskName }
 
 $jobPath = Join-Path $queue ($jobId + ".json")
-$job | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $jobPath -Encoding UTF8
+$tempPath = Join-Path $queue ($jobId + '.tmp')
+$job | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $tempPath -Encoding UTF8
+[IO.File]::Move($tempPath,$jobPath)
 
 Start-ScheduledTask -TaskName $TaskName
 

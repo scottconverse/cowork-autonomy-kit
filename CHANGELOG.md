@@ -2,6 +2,31 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v1.6.0 - 2026-10-09
+
+### Changed
+- Target Claude Code on Windows: desktop Code tab primary, CLI secondary. Cowork tab is out of scope; historical repository and instruction filenames stay stable.
+- Document the Pro/Max bypass toggle, per-folder selector precedence, Git Bash/PowerShell behavior and full tray-quit restart.
+- Load the full depth profile through a real import every session, with context cost disclosed.
+- Upgrade the notify Stop hook in place to explicit PowerShell without matcher; preserve unrelated hooks and permission rules.
+- Add confirmation with -Yes and -SkipBypass; migrate attribution to the current object shape.
+
+### Security
+- Protect worker/invoker/path-test code in Program Files; separate queue/results/logs and state under ProgramData with verified explicit ACLs.
+- Limit user-script trust to C:\dev and Documents\Claude; inspect existing development-root write grants and retain old helper jobs during migration.
+- Remove the dialog-clicking watcher and unverified routine template; retain legacy task removal in Uninstall.
+- Document accepted prompt-injection and administrator-script risks and deny-rule support.
+- Remove tracked audit artifacts and pin all workflow actions by full commit SHA.
+
+### Fixed
+- Preserve the first pre-kit settings and instruction snapshots across reruns; restore the true baseline instead of a newest timestamped backup. Originally absent files are removed only when unchanged.
+- Refuse bad settings JSON before configuration writes; make legacy stripping respect WhatIf and UTF-8 without BOM.
+- Drain queue arrivals during active work while retaining serial IgnoreNew scheduling. The final-empty-check scheduling race remains documented.
+
+### Verification
+- Tests extract real production functions by AST. Add isolated lifecycle, malformed-input, rollback, ACL-readback, queue-arrival and forward-slash portability coverage, plus Windows PowerShell 5.1 CI and current-version/minimum-text-size site tests.
+- No clean-machine run, full Setup execution, live helper installation or live desktop-app test was performed for this release.
+
 ## v1.5.2 - 2026-10-09
 
 ### Fixed
@@ -24,7 +49,7 @@ All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 - Setup summary and `Doctor-Autonomy.ps1` now report Playwright; Doctor also reports the
   chromium browser install.
 
-## v1.5.1 — 2026-10-04
+## v1.5.1  -  2026-10-04
 
 ### Fixed
 - On helper verification failure, explicitly report the retained elevated task,
@@ -39,7 +64,7 @@ All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 - `tests/Test-HelperInstall.ps1`: installed-file, JSON round-trip, custom task,
   result validation, missing-source, and timeout regressions.
 
-## v1.5.0 — 2026-06-28
+## v1.5.0  -  2026-06-28
 
 Cleared the 6 remaining "actual concerns worth fixing" from the GauntletGate-full
 post-bias-pass. Behavior delta is one edge case; the rest is regression guards and docs.
@@ -74,7 +99,7 @@ post-bias-pass. Behavior delta is one edge case; the rest is regression guards a
   the staging-vs-live behavior change so anyone upgrading knows their existing
   `~/.claude/CLAUDE.md` is preserved (was overwritten in v1.3.x).
 
-## v1.4.2 — 2026-06-28
+## v1.4.2  -  2026-06-28
 
 ### Changed
 - Renamed: `claude-cowork-autonomy-kit` -> **`cowork-autonomy-kit`** on GitHub. Old
@@ -83,10 +108,10 @@ post-bias-pass. Behavior delta is one edge case; the rest is regression guards a
 - Scrubbed "Claude Cowork Autonomy Kit" -> "Cowork Autonomy Kit" in README H1, all
   PowerShell `.SYNOPSIS` blocks, `Install.cmd` header, and `Watch-ComputerUseApprove.ps1`
   attribution comment.
-- Dropped the prominent "ported from Codex" version-line subtitle.
-- Replaced the long "What Changed From The Codex Version" comparison table with a
+- Dropped the prominent "ported from an earlier desktop kit" version-line subtitle.
+- Replaced the long "What Changed From The an earlier desktop kit Version" comparison table with a
   short "Origin" footer paragraph. Lineage honestly acknowledged; framing no longer
-  implies ongoing Codex affiliation.
+  implies ongoing an earlier desktop kit affiliation.
 
 ### Not changed (deliberate)
 - Scheduled task names (`ClaudeApproveWatcher`, `ClaudeElevatedDevHelper`) and live
@@ -94,10 +119,10 @@ post-bias-pass. Behavior delta is one edge case; the rest is regression guards a
   as-is. They refer to Claude-the-AI being controlled (not the kit's branding), and
   renaming them would orphan files / break existing installs.
 
-## v1.4.1 — 2026-06-28
+## v1.4.1  -  2026-06-28
 
 ### Added
-- `Install.cmd` at the repo root — **double-click entry point.** Forwards to
+- `Install.cmd` at the repo root  -  **double-click entry point.** Forwards to
   `Setup-Autonomy.ps1` with `-ExecutionPolicy Bypass`, pauses at end so the console
   window stays open for the user to read output. Passes through any args
   (e.g. `Install.cmd -SkipHelper`).
@@ -105,7 +130,7 @@ post-bias-pass. Behavior delta is one edge case; the rest is regression guards a
   whole install triggers ONE Windows UAC prompt (the elevated-dev-helper install
   in Setup step 8) and nothing else.
 
-## v1.4.0 — 2026-06-28
+## v1.4.0  -  2026-06-28
 
 Cleared every finding from the v1.3.3 GauntletGate lite audit.
 
@@ -131,10 +156,10 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   an actual successful routine execution. Users must validate before relying on it.
 
 ### Added
-- `tests/Test-NoBOM.ps1` — portability guard that scans all kit `.json` files and
+- `tests/Test-NoBOM.ps1`  -  portability guard that scans all kit `.json` files and
   the live `~/.claude/settings.json` for UTF-8 BOM (`EF BB BF`); exit 1 on
   regression. Protects the BOM-free fix above.
-- `.gitattributes` — `*.ps1`/`*.cmd` → CRLF, `*.md`/`*.json`/`*.toml`/`*.yml` →
+- `.gitattributes`  -  `*.ps1`/`*.cmd` -> CRLF, `*.md`/`*.json`/`*.toml`/`*.yml` ->
   LF, common binaries marked. Stops the per-commit CRLF noise.
 
 ### Changed
@@ -166,9 +191,9 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   optimization is tracked, not lost. Idle cost is negligible; upgrade when CPU
   measurably matters.
 
-## v1.3.3 — 2026-06-28
+## v1.3.3  -  2026-06-28
 
-### Fixed (Uninstall greediness — restored unrelated backups)
+### Fixed (Uninstall greediness  -  restored unrelated backups)
 - `Uninstall-Autonomy.ps1`'s `Restore-LatestBak` previously matched any
   `<name>.bak-*` file alongside the live file and restored the most recent. This
   greedily picked up backups created by other tools (e.g. `settings.json.bak-pre-ponytail`
@@ -178,14 +203,14 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   format Setup's `Install-LiveOrLeave` writes). Non-kit backups in the same
   directory are listed in output so the user knows they exist but were skipped.
 
-## v1.3.2 — 2026-06-28
+## v1.3.2  -  2026-06-28
 
 ### Fixed (Windows PowerShell 5.1 encoding + alias bugs surfaced by a real install)
-- Replaced em-dashes (—) and en-dashes (–) with ASCII (`--`, `-`) in all .ps1 files.
+- Replaced em-dashes ( - ) and en-dashes (-) with ASCII (`--`, `-`) in all .ps1 files.
   Without a BOM, PS 5.1 decodes the script body as the system codepage; the em-dash bytes
   become invalid sequence, producing "string is missing the terminator" parser errors that
   prevent the whole script from running. The most visible victim was
-  `Install-ApproveWatcherTask.ps1`, which silently failed at parse time on first install —
+  `Install-ApproveWatcherTask.ps1`, which silently failed at parse time on first install  -
   Setup then printed a false "installed + started" message and tried to `Start-ScheduledTask`
   on a task that was never registered.
 - Renamed Doctor's `H` helper function to `Hdr`. `H` is PS 5.1's built-in alias for
@@ -196,9 +221,9 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   claiming success, and prints an actionable warning if not. No more silent "installed +
   started" lies when the installer crashed.
 
-## v1.3.1 — 2026-06-28
+## v1.3.1  -  2026-06-28
 
-### Changed (back-port: config-merge restraint from codex-desktop-autonomy-kit)
+### Changed (back-port: config-merge restraint from an earlier desktop kit)
 - `Setup-Autonomy.ps1` no longer overwrites existing live files. The kit now stages its
   reference copies under `~/.claude/autonomy-kit/` (always refreshed) and writes the live
   `~/.claude/CLAUDE.md`, `CLAUDE-Cowork-Autonomous-Software-Development.md`, and
@@ -212,15 +237,15 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
 - README adds an "Staging vs live (re-running Setup safely)" step and updates the
   `YOUR_USERNAME` note (auto-substituted, no longer hand-edit).
 
-## v1.3.0 — 2026-06-28
+## v1.3.0  -  2026-06-28
 
 ### Added
-- `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
+- `computer-use-approve-watcher/`  -  background watcher that auto-clicks the computer-use /
   browser / webfetch `Approve` dialog via Windows UI Automation.
-  - `Watch-ComputerUseApprove.ps1` — UIA polling watcher, tunable label/process/poll/debounce.
-  - `Install-ApproveWatcherTask.ps1` — registers a user-scope logon scheduled task
+  - `Watch-ComputerUseApprove.ps1`  -  UIA polling watcher, tunable label/process/poll/debounce.
+  - `Install-ApproveWatcherTask.ps1`  -  registers a user-scope logon scheduled task
     (`ClaudeApproveWatcher`, no admin); supports `-Uninstall`.
-  - `routine-approve.example.json` — Claude Code routine template for headless runs that
+  - `routine-approve.example.json`  -  Claude Code routine template for headless runs that
     pre-grants `computer:` / `browser:` / `webfetch:` via `approvedPermissions`.
 - `Setup-Autonomy.ps1`:
   - Step 7 installs and starts the watcher (default-on, no flag).
@@ -228,17 +253,17 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
     not already registered. `-SkipHelper` opts out.
   - Auto-substitutes `YOUR_USERNAME` in `additionalDirectories` with `$env:USERNAME` on
     settings merge.
-- `Doctor-Autonomy.ps1` — read-only status dashboard: toolchain presence, CLAUDE.md +
+- `Doctor-Autonomy.ps1`  -  read-only status dashboard: toolchain presence, CLAUDE.md +
   settings state, watcher task + process status, helper task status. Flags unresolved
   `YOUR_USERNAME` placeholders.
-- `Uninstall-Autonomy.ps1` — reverses the config layer: removes `ClaudeApproveWatcher`,
+- `Uninstall-Autonomy.ps1`  -  reverses the config layer: removes `ClaudeApproveWatcher`,
   restores most recent `settings.json.bak` / `CLAUDE.md.bak` (or strips kit-added entries
   if no backup), removes depth profile + notify hook. `-RemoveHelper` to also drop the
   elevated helper task. Toolchain untouched. Supports `-WhatIf`.
-- `tests/Test-AutonomyKit.ps1` — three new checks: `approve_watcher_task` (registered +
+- `tests/Test-AutonomyKit.ps1`  -  three new checks: `approve_watcher_task` (registered +
   Ready/Running), `approve_watcher_process` (PS process alive running the watcher script),
   `uiautomation_assemblies` (UIA assemblies load).
-- `CLAUDE-Cowork-Core.md` — one-paragraph note that `ClaudeApproveWatcher` auto-handles the
+- `CLAUDE-Cowork-Core.md`  -  one-paragraph note that `ClaudeApproveWatcher` auto-handles the
   permission-broker dialogs, so future sessions don't re-explain or editorialize about them.
 
 ### Changed
@@ -251,28 +276,28 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   longer true with the watcher running); replaced the "double-click the .cmd" NEXT step
   with `Doctor-Autonomy.ps1` and tool-install hints.
 
-## v1.2.2 — 2026-06-24
+## v1.2.2  -  2026-06-24
 
-### Fixed (docs — name the real root cause of non-elevation)
+### Fixed (docs  -  name the real root cause of non-elevation)
 - The elevated-helper docs previously implied Claude Code merely "runs as a normal process
   and cannot launch its shell with an admin token," which read like a one-time-setup gap that
   the right configuration could close. It cannot. Clarified the actual, hard constraint:
   - `elevated-dev-helper/README.md`: added a **"Why inline elevation is impossible"** section.
     Under the Cowork host the Claude desktop app is a **packaged MSIX app**
     (`C:\Program Files\WindowsApps\Claude_…`, verifiable via `Get-AppxPackage -Name *Claude*`),
-    and Windows **never** runs packaged apps elevated — no "Run as administrator", no
+    and Windows **never** runs packaged apps elevated  -  no "Run as administrator", no
     scheduled-task launcher, no registry switch; disabling UAC (`EnableLUA=0`) breaks packaged
     apps outright. So no skill/prompt/profile can elevate the inline shell, and the helper is
     the **only** admin bridge (the lone exception being the non-packaged Claude Code CLI run
-    elevated — the terminal, not Cowork).
+    elevated  -  the terminal, not Cowork).
   - `elevated-dev-helper/CLAUDE-Elevated-Helper-Addendum.md`: same clarification in *Purpose*;
     explicit instruction never to advise "relaunch elevated" for a packaged-app host.
 - No behavior change; the helper was already correct. This release makes the docs honest about
   *why* it is necessary rather than optional.
 
-## v1.2.1 — 2026-06-21
+## v1.2.1  -  2026-06-21
 
-### Fixed (portability — no hardcoded paths)
+### Fixed (portability  -  no hardcoded paths)
 - Removed machine-specific hardcoded paths from shipped files so the kit installs and runs on
   any machine:
   - `elevated-dev-helper/ClaudeElevatedDevHelper.ps1`: trusted roots now resolve the running
@@ -286,10 +311,10 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
 
 ### Fixed (GauntletGate full-lane findings, pre-push)
 - **`hooks/hooks.example.json` notify command was broken.** The first portability attempt used
-  `-Command "& '$env:USERPROFILE\...'"` — single quotes mean `$env:USERPROFILE` never expands, so
+  `-Command "& '$env:USERPROFILE\...'"`  -  single quotes mean `$env:USERPROFILE` never expands, so
   the hook errored every turn. Replaced with a clearly-marked `<YOUR-HOME>` placeholder in the
   proven `-File "<abs>"` form (the installer still wires the real absolute path automatically).
-- **Added `tests/Test-NoHardcodedPaths.ps1`** — a portability regression guard that fails if any
+- **Added `tests/Test-NoHardcodedPaths.ps1`**  -  a portability regression guard that fails if any
   shipped file reintroduces a literal `C:\Users\<account>` path (matches both `.ps1` single- and
   JSON double-backslash forms; placeholders + CHANGELOG history exempt). Closes the gap where the
   release's headline property had no test.
@@ -300,14 +325,14 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   (it already backed up `settings.json`; CLAUDE.md was being clobbered with no backup).
 - **Elevated-helper addendum: honest blast-radius.** Documented that the user-writable trusted
   roots make `RunTrustedPowerShellScript` a no-UAC local-admin path for any code at the user's
-  integrity level — it is an accepted single-owner trade-off, not a sandbox.
+  integrity level  -  it is an accepted single-owner trade-off, not a sandbox.
 
-## v1.2.0 — 2026-06-21
+## v1.2.0  -  2026-06-21
 
 ### Docs / investigation
 - **Computer-use standing-consent finding (HONEST NEGATIVE).** Investigated whether the
   per-session `request_access` computer-use prompt can be made standing like `bypassPermissions`.
-  It **cannot** from any local config — verified against the desktop app bundle (Claude
+  It **cannot** from any local config  -  verified against the desktop app bundle (Claude
   `1.14271.0.0`, claude-code `2.1.181`). The `computer:` / `browser:` / `webfetch:` tool families
   are special-cased in the permission broker to **always** open an interactive dialog (in a branch
   that returns before any bypass/allow-rule check), standing-rule promotion is **explicitly
@@ -323,33 +348,33 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   the browser/computer-use section that the per-session `request_access` gate is app-enforced and
   not covered by `bypassPermissions`, with the batch-one-request guidance.
 
-## v1.1.2 — 2026-06-20
+## v1.1.2  -  2026-06-20
 
 ### Docs
 - Added this changelog and a version stamp in the README.
 - Documented the elevated helper's **full admin capability** via
   `RunTrustedPowerShellScript` in the helper addendum (machine installs, `HKLM`, services,
-  firewall — no per-action UAC), and added an elevated-helper verification lane (Part 4) to
+  firewall  -  no per-action UAC), and added an elevated-helper verification lane (Part 4) to
   the test plan.
 
-## v1.1.1 — 2026-06-20
+## v1.1.1  -  2026-06-20
 
 ### Fixed
-- **Elevated helper process runner (the real fix).** Replaced the `Start-Process`→temp-file
-  approach — which hung when a grandchild (`winget` → `msiexec`) inherited the redirected
-  handles and kept them open after the parent exited — with `ProcessStartInfo` +
+- **Elevated helper process runner (the real fix).** Replaced the `Start-Process`->temp-file
+  approach  -  which hung when a grandchild (`winget` -> `msiexec`) inherited the redirected
+  handles and kept them open after the parent exited  -  with `ProcessStartInfo` +
   `ReadToEndAsync` (concurrent pipe drain) + a bounded wait on the readers. Both
   `RunTrustedPowerShellScript` (arbitrary elevated PowerShell) and `WingetInstall`
   (machine-scope) now complete cleanly with **no UAC**. Verified on a real machine: `HKLM` /
   `C:\Program Files` / firewall writes and machine-scope installs (7-Zip, fd) all via the
   helper.
-- Corrected docs that wrongly blamed `winget` for a "non-interactive task" limitation — it
+- Corrected docs that wrongly blamed `winget` for a "non-interactive task" limitation  -  it
   was the handle-inheritance bug above, not winget.
 
-## v1.1.0 — 2026-06-20
+## v1.1.0  -  2026-06-20
 
 ### Added
-- **`Setup-Autonomy.ps1`** — one-command, idempotent, no-admin fresh-machine bootstrap
+- **`Setup-Autonomy.ps1`**  -  one-command, idempotent, no-admin fresh-machine bootstrap
   (real Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright +
   browsers, and the Cowork config: CLAUDE.md, depth profile, notify hook, `bypassPermissions`
   settings merge).
@@ -362,10 +387,12 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   PowerShell 5.1) and a stdout/stderr pipe-read deadlock. (Superseded by the v1.1.1 runner
   rewrite, which fixes the remaining hang.)
 
-## v1.0.0 — 2026-06-20
+## v1.0.0  -  2026-06-20
 
 ### Added
-- Initial port from the Codex Desktop Autonomy Kit: two-tier instruction profile (compact
+- Initial port from the an earlier desktop kit Desktop Autonomy Kit: two-tier instruction profile (compact
   `CLAUDE-Cowork-Core.md` + full depth profile), `bypassPermissions` settings with empty
   `ask`/`deny`, bounded elevated dev helper, capability + two-pole behavioral test plan, and
   an optional turn-ended notification hook.
+
+History: originally derived from the Codex Desktop Autonomy Kit.

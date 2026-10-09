@@ -1,24 +1,19 @@
 {
-  "//": "Max-autonomy permission profile for Claude Code / Cowork. Matches (and extends) Codex full-access intent.",
+  "//": "Full-permission settings for Claude Code on Windows, desktop Code tab and CLI.",
   "//1": "Copy into ~/.claude/settings.json (user-global) or a project .claude/settings.json. Back up the existing file first.",
-  "//2": "bypassPermissions = no prompts. 'ask' and 'deny' are intentionally EMPTY — full autonomy, owner accepts all risk.",
-  "//3": "'allow' is broad but only matters if you ever switch off bypass; under bypassPermissions nothing prompts anyway.",
-
+  "//2": "bypassPermissions has no prompt-injection protection. Owner accepts risk; existing ask/deny rules still apply.",
+  "//3": "allow rules have no effect in bypassPermissions; platform exceptions and explicit rules can still prompt.",
   "permissions": {
     "defaultMode": "bypassPermissions",
-
     "//ask": "Empty by design. Add entries here only if YOU decide a specific action should prompt.",
     "ask": [],
-
     "//deny": "Empty by design. Add entries here only if YOU decide a specific action should be hard-blocked.",
     "deny": [],
-
-    "//additionalDirectories": "Broadens the working scope beyond the launch cwd. EDIT THESE to your own roots — the entries below are placeholders, NOT real paths. Replace YOUR_USERNAME with your Windows account name (or remove the entry). Setup-Autonomy.ps1 does not write this list, so set it yourself if you want it.",
+    "//additionalDirectories": "Broadens the working scope beyond the launch cwd. EDIT THESE to your own roots  -  the entries below are placeholders, NOT real paths. Replace YOUR_USERNAME with your Windows account name (or remove the entry). Setup-Autonomy.ps1 does not write this list, so set it yourself if you want it.",
     "additionalDirectories": [
       "C:\\Users\\YOUR_USERNAME",
       "C:\\dev"
     ],
-
     "allow": [
       "Read",
       "Edit",
@@ -31,9 +26,11 @@
       "WebSearch"
     ]
   },
-
-  "//enableAllProjectMcpServers": "Auto-approve connected project MCP servers — fewer interruptions.",
+  "//enableAllProjectMcpServers": "Auto-approve connected project MCP servers  -  fewer interruptions.",
   "enableAllProjectMcpServers": true,
-
-  "includeCoAuthoredBy": true
+  "attribution": {
+    "commit": "Co-Authored-By: Claude <noreply@anthropic.com>",
+    "pr": "Generated with Claude Code",
+    "sessionUrl": true
+  }
 }

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Read-only status dashboard for the Cowork Autonomy Kit installation.
+    Read-only status dashboard for the Claude Code Windows Autonomy Kit installation.
 
 .DESCRIPTION
     Inventory of what's installed and configured on this box. Distinct from
@@ -31,6 +31,8 @@ $chromium = Get-ChildItem -Path $pwBrowsers -Directory -Filter 'chromium-*' -Err
 L 'playwright chromium' $(if ($chromium) { $chromium.FullName } else { '(missing; run: python3 -m playwright install chromium)' })
 
 Hdr "Config (~/.claude)"
+Write-Host "In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions."
+Write-Host 'Doctor cannot read the app toggle; verify it in Claude Settings.'
 $claudeMd = Join-Path $cl "CLAUDE.md"
 $sp       = Join-Path $cl "settings.json"
 $profile  = Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md"
@@ -50,6 +52,9 @@ L "staging dir"      $(if (Test-Path $stage) { "$stage ($((Get-ChildItem $stage 
 L "CLAUDE.md"        (Compare-WithStage $claudeMd 'CLAUDE-Cowork-Core.md')
 L "depth profile"    (Compare-WithStage $profile  'CLAUDE-Cowork-Autonomous-Software-Development.md')
 L "notify hook file" (Compare-WithStage $notify   'notify-turn-ended.ps1')
+
+$hasImport = (Test-Path -LiteralPath $claudeMd) -and (@(Get-Content -LiteralPath $claudeMd) -ccontains '@CLAUDE-Cowork-Autonomous-Software-Development.md')
+L 'depth profile import' $(if ($hasImport) { 'present' } else { 'missing' })
 
 if (Test-Path $sp) {
     try {
@@ -81,33 +86,23 @@ if (Test-Path $sp) {
     L "settings.json" '(missing)'
 }
 
-Hdr "Approve watcher"
-$w = Get-ScheduledTask -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
-if ($w) {
-    L "task"        "ClaudeApproveWatcher"
-    L "  state"     $w.State
-    $info = Get-ScheduledTaskInfo -TaskName "ClaudeApproveWatcher"
-    L "  last run"  $info.LastRunTime
-    L "  last result code" $info.LastTaskResult
-    $proc = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'Watch-ComputerUseApprove' }
-    if ($proc) { L "  process"   ("alive (PID {0})" -f (($proc.ProcessId) -join ',')) }
-    else       { L "  process"   "not running" }
-} else {
-    L "task" '(not registered -- run Setup-Autonomy.ps1 or computer-use-approve-watcher\Install-ApproveWatcherTask.ps1)'
-}
+Hdr "Legacy watcher"
+try {
+    $legacy = Get-ScheduledTask -TaskName 'ClaudeApproveWatcher' -ErrorAction Stop
+    L 'legacy task' 'legacy approve watcher still installed; run Uninstall-Autonomy.ps1 to remove it'
+} catch { L 'legacy task' ('absent or inaccessible: ' + $_.Exception.Message) }
 
 Hdr "Elevated dev helper"
-$h = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
-if ($h) {
-    L "task"     "ClaudeElevatedDevHelper"
-    L "  state"  $h.State
-    $hinfo = Get-ScheduledTaskInfo -TaskName "ClaudeElevatedDevHelper"
-    L "  last run" $hinfo.LastRunTime
-    L "  last result code" $hinfo.LastTaskResult
-    L "  install root" 'C:\dev\ClaudeElevatedHelper'
-} else {
-    L "task" '(not registered -- run elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd)'
-}
-
-Write-Host ""
+$statePath = Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json'
+if (Test-Path -LiteralPath $statePath) {
+    try {
+        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+        L 'worker root' $state.install_root
+        L 'data root' $state.data_root
+        L 'invoker' $state.invoker_script
+        L 'verified installation' $state.installed
+        $task = Get-ScheduledTask -TaskName $state.task_name -ErrorAction Stop
+        L 'task' $task.TaskName
+        L 'state' $task.State
+    } catch { L 'helper status' ('invalid or inaccessible: ' + $_.Exception.Message) }
+} else { L 'helper state' 'missing; install or migrate helper using its installer' }

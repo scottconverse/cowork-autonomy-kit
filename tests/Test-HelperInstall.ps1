@@ -67,6 +67,49 @@ try {
     $disclosure = $warnings -join "`n"
     Assert ($disclosure.Contains($TaskName) -and $disclosure.Contains('remains registered')) 'retained task explicitly disclosed'
     Assert ($disclosure.Contains($InstallRoot) -and $disclosure.Contains($installLog)) 'retained files and log location disclosed'
+
+    . (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
+    Import-ProductionFunctions $installer @('New-HelperAcl','Set-VerifiedHelperAcl','Initialize-DevelopmentRoot')
+    $testSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $queueAcl=New-HelperAcl -UserSid $testSid -Kind Queue
+    $readAcl=New-HelperAcl -UserSid $testSid -Kind ReadFile
+    $codeAcl=New-HelperAcl -UserSid $testSid -Kind Code
+    Assert $queueAcl.AreAccessRulesProtected 'queue inheritance disabled'
+    $userQueue=@($queueAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq $testSid })
+    Assert (($userQueue[0].FileSystemRights -band [Security.AccessControl.FileSystemRights]::Modify) -eq [Security.AccessControl.FileSystemRights]::Modify) 'queue user Modify'
+    $userRead=@($readAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -eq $testSid })
+    Assert (($userRead[0].FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write) -eq 0) 'state user cannot write'
+    $ordinary=@($codeAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object { $_.IdentityReference.Value -notin @('S-1-5-18','S-1-5-32-544') })
+    Assert (@($ordinary | Where-Object { $_.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write }).Count -eq 0) 'program directory has no ordinary-user write grant'
+    function Set-Acl { param($LiteralPath,$AclObject,$ErrorAction) $script:writtenAcl=$AclObject }
+    function Get-Acl { param($LiteralPath,$ErrorAction) $script:writtenAcl }
+    Set-VerifiedHelperAcl -Path 'test' -UserSid $testSid -Kind Queue
+    Assert ($null -ne $script:writtenAcl) 'production ACL write/readback succeeds for matching ACL'
+    function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind ReadDirectory }
+    Expect-Failure { Set-VerifiedHelperAcl -Path 'test' -UserSid $testSid -Kind Queue } 'ACL verification failed'
+    function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind Code }
+    $readOnlyWarnings = @(Initialize-DevelopmentRoot -Path $sandbox -UserSid $testSid 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+    Assert ($readOnlyWarnings.Count -eq 0) 'read-only Users grant is not mistaken for write access'
+    function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid 'S-1-5-11' -Kind Queue }
+    $broadWarnings = @(Initialize-DevelopmentRoot -Path $sandbox -UserSid $testSid 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+    Assert ($broadWarnings.Count -eq 1 -and $broadWarnings[0].Message.Contains('S-1-5-11')) 'broad development-root writer is warned about without changing ACL'
+    Import-ProductionFunctions (Join-Path $kit 'elevated-dev-helper\ClaudeElevatedDevHelper.ps1') @('Write-JsonLog','Complete-QueueFile','Invoke-HelperQueue','Assert-TrustedPath')
+    $drain=Join-Path $sandbox 'drain'
+    foreach ($dir in @('queue','done','failed','logs')) { New-Item -ItemType Directory -Path (Join-Path $drain $dir) -Force | Out-Null }
+    [IO.File]::WriteAllText((Join-Path $drain 'queue\first.json'),'{{"action":"CheckAdmin"}}'.Replace('{{','{').Replace('}}','}'))
+    $script:queueCalls=0
+    function Invoke-HelperAction {
+        param($Job)
+        $script:queueCalls++
+        if ($script:queueCalls -eq 1) { [IO.File]::WriteAllText((Join-Path $drain 'queue\second.json'),'{"action":"CheckAdmin"}') }
+        return @{ok=$true}
+    }
+    Invoke-HelperQueue -Root $drain
+    Assert ($script:queueCalls -eq 2 -and @(Get-ChildItem (Join-Path $drain 'queue') -Filter *.json).Count -eq 0) 'real worker drains arrivals during an active job'
+    Assert ((Get-Content (Join-Path $drain 'done\second.result.json') -Raw | ConvertFrom-Json).status -eq 'ok') 'second arrival completed serially'
+    Expect-Failure { Assert-TrustedPath (Join-Path $env:USERPROFILE '.claude\unsafe.ps1') } 'not under a trusted'
+    Expect-Failure { Assert-TrustedPath (Join-Path $env:TEMP 'unsafe.ps1') } 'not under a trusted'
+    Assert ((Assert-TrustedPath 'C:\dev\Example\x.ps1') -eq 'C:\dev\Example\x.ps1') 'development root retained'
     Write-Host "SUMMARY: $passed PASS / 0 FAIL"
 } finally {
     Remove-Variable -Name helperInstallTestTriggeredTask -Scope Global -ErrorAction SilentlyContinue

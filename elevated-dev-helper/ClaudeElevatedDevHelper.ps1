@@ -1,5 +1,5 @@
 param(
-    [string]$Root = "C:\dev\ClaudeElevatedHelper"
+    [string]$Root = (Join-Path $env:ProgramData "ClaudeElevatedHelper")
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,13 +31,15 @@ function Assert-Admin {
 function Assert-TrustedPath {
     param([string]$Path)
     $resolved = [System.IO.Path]::GetFullPath($Path)
+    if ($PSCommandPath) {
+        $installedPathTest = Join-Path (Split-Path -Parent $PSCommandPath) 'Self Test Path\Windows Path Test.ps1'
+        if ($resolved -eq [IO.Path]::GetFullPath($installedPathTest)) { return $resolved }
+    }
     # Portable: resolve the running user's actual profile (handles non-default profile
     # locations) instead of assuming C:\Users\<name>. C:\dev is the helper's own root.
     $trustedRoots = @(
         "C:\dev\",
-        "$env:USERPROFILE\Documents\Claude\",
-        "$env:USERPROFILE\.claude\",
-        "$env:USERPROFILE\AppData\Local\Temp\ClaudeElevatedHelper\"
+        "$env:USERPROFILE\Documents\Claude\"
     )
     foreach ($root in $trustedRoots) {
         if ($resolved.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -194,21 +196,22 @@ function Invoke-HelperAction {
     }
 }
 
-Assert-Admin
-New-DirectoryIfMissing -Path $Root
-$queue = Join-Path $Root "queue"
-$done = Join-Path $Root "done"
-$failed = Join-Path $Root "failed"
-$logs = Join-Path $Root "logs"
-New-DirectoryIfMissing -Path $queue
-New-DirectoryIfMissing -Path $done
-New-DirectoryIfMissing -Path $failed
-New-DirectoryIfMissing -Path $logs
-$logPath = Join-Path $logs "helper.jsonl"
+function Complete-QueueFile {
+    param([string]$Source,[string]$Destination)
+    # A same-volume move retains queue ACLs. Create the archive under its read-only
+    # destination instead so the installing user does not retain Modify on history.
+    [IO.File]::WriteAllBytes($Destination,[IO.File]::ReadAllBytes($Source))
+    [IO.File]::Delete($Source)
+}
 
-Write-JsonLog -LogPath $logPath -Record @{ event = "helper_start"; root = $Root; user = $env:USERNAME }
-
-$jobs = Get-ChildItem -LiteralPath $queue -Filter "*.json" -File | Sort-Object LastWriteTime
+function Invoke-HelperQueue {
+    param([string]$Root)
+    $queue=Join-Path $Root 'queue'; $done=Join-Path $Root 'done'; $failed=Join-Path $Root 'failed'; $logPath=Join-Path $Root 'logs\helper.jsonl'
+    $processed=0
+    while ($true) {
+$jobs = @(Get-ChildItem -LiteralPath $queue -Filter "*.json" -File | Sort-Object LastWriteTime)
+    if ($jobs.Count -eq 0) { break }
+    $processed += $jobs.Count
 foreach ($jobFile in $jobs) {
     $jobId = [System.IO.Path]::GetFileNameWithoutExtension($jobFile.Name)
     try {
@@ -223,7 +226,7 @@ foreach ($jobFile in $jobs) {
             result = $result
             completed_at = (Get-Date).ToUniversalTime().ToString("o")
         } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $resultPath -Encoding UTF8
-        Move-Item -LiteralPath $jobFile.FullName -Destination (Join-Path $done $jobFile.Name) -Force
+        Complete-QueueFile -Source $jobFile.FullName -Destination (Join-Path $done $jobFile.Name)
         Write-JsonLog -LogPath $logPath -Record @{ event = "job_ok"; job_id = $jobId; action = $job.action }
     } catch {
         $resultPath = Join-Path $failed ($jobId + ".error.json")
@@ -233,9 +236,27 @@ foreach ($jobFile in $jobs) {
             error = $_.Exception.Message
             completed_at = (Get-Date).ToUniversalTime().ToString("o")
         } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $resultPath -Encoding UTF8
-        Move-Item -LiteralPath $jobFile.FullName -Destination (Join-Path $failed $jobFile.Name) -Force
+        Complete-QueueFile -Source $jobFile.FullName -Destination (Join-Path $failed $jobFile.Name)
         Write-JsonLog -LogPath $logPath -Record @{ event = "job_failed"; job_id = $jobId; error = $_.Exception.Message }
     }
 }
 
-Write-JsonLog -LogPath $logPath -Record @{ event = "helper_stop"; processed = $jobs.Count }
+    }
+    Write-JsonLog -LogPath $logPath -Record @{event='helper_stop';processed=$processed}
+}
+
+Assert-Admin
+New-DirectoryIfMissing -Path $Root
+$queue = Join-Path $Root "queue"
+$done = Join-Path $Root "done"
+$failed = Join-Path $Root "failed"
+$logs = Join-Path $Root "logs"
+New-DirectoryIfMissing -Path $queue
+New-DirectoryIfMissing -Path $done
+New-DirectoryIfMissing -Path $failed
+New-DirectoryIfMissing -Path $logs
+$logPath = Join-Path $logs "helper.jsonl"
+
+Write-JsonLog -LogPath $logPath -Record @{ event = "helper_start"; root = $Root; user = $env:USERNAME }
+
+Invoke-HelperQueue -Root $Root

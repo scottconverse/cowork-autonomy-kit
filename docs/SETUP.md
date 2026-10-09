@@ -1,189 +1,57 @@
-# Cowork Autonomy Kit
+# Claude Code Windows setup
 
-**Version 1.5.1 · Windows** — see [CHANGELOG.md](../CHANGELOG.md).
+Version 1.6.0 - Windows
 
-Personal kit for configuring Claude Code (in Cowork mode) toward maximum practical
-software-development autonomy on Windows machines, within Claude Code, operating-system, and
-higher-priority instruction boundaries.
+Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
-## Contents
+The Cowork tab is not in scope. Cowork has its own permission modes and runs commands in a VM or in the cloud.
 
-- `Install.cmd` — **double-click entry point.** Forwards to `Setup-Autonomy.ps1` with
-  `-ExecutionPolicy Bypass` and pauses at end so the console stays open.
-- `Setup-Autonomy.ps1` — **one-command fresh-machine bootstrap.** Installs the toolchain
-  (Python + `python3` shim, uv, scoop, Node, gh, ripgrep/jq/sqlite, Playwright + browsers),
-  the Cowork config (CLAUDE.md, hooks, settings), the approve watcher, and triggers the
-  elevated-dev-helper UAC install if not already present.
-- `Doctor-Autonomy.ps1` — read-only status dashboard (toolchain, config, watcher, helper).
-- `Uninstall-Autonomy.ps1` — reverses the config layer, restores `.bak` files, removes the
-  watcher task. Leaves toolchain alone. `-RemoveHelper` to also drop the elevated helper task.
-- `CLAUDE-Cowork-Core.md` — compact standing instructions for everyday speed (use as your
-  live `~/.claude/CLAUDE.md`).
-- `CLAUDE-Cowork-Autonomous-Software-Development.md` — the full / depth operating profile,
-  pulled in for broad or high-blast-radius work.
-- `settings.autonomy.example.json` — Claude Code permission profile (`bypassPermissions`,
-  empty `ask`/`deny`).
-- `elevated-dev-helper/` — bounded elevated-helper pattern for admin actions when Claude Code
-  runs non-admin.
-- `tests/` — `Test-AutonomyKit.ps1` (capability harness), `Test-NoHardcodedPaths.ps1`
-  (portability regression guard), `Test-NoBOM.ps1` (UTF-8 BOM regression guard),
-  `Test-UninstallBakFilter.ps1` (bak-filter regression guard),
-  `Test-SettingsMerge.ps1` (merge-idempotency regression guard), and `TEST-PLAN.md`.
-- `hooks/` — desktop-notification parity with Codex's `notify` hook.
-- `computer-use-approve-watcher/` — background watcher that auto-clicks the computer-use /
-  browser / webfetch `Approve` dialog; includes a `routine-approve.template.json` (schema
-  not end-to-end verified) for headless runs. See [its README](../computer-use-approve-watcher/README.md).
+The repo name and CLAUDE-Cowork-*.md names are historical. They remain unchanged so existing paths keep working.
 
-## Intended Use
+## Quick start
 
-Use the profile as the persistent Claude instruction baseline for personal development
-machines. It authorizes Claude to inspect, edit, install, configure, build, test, debug,
-retry, verify, and clean up ordinary development work within higher-priority rules and real
-OS/app boundaries.
+1. In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions.
+2. Review the scripts and accepted risks in [README](../README.md). Download and extract the ZIP or clone the repository.
+3. Run `Install.cmd`, review the printed summary, and answer y. `Install.cmd -Yes` is available for scripted runs. `-SkipBypass` leaves defaultMode unchanged; `-SkipHelper` avoids helper installation.
+4. Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles.
+5. Run `Doctor-Autonomy.ps1` and check the live profile import, tools, settings and helper state.
 
-## Quick start (fresh machine)
+Setup installs Python, uv, Scoop, Node, gh, ripgrep, jq, SQLite, Playwright + chromium browser. It snapshots the original settings.json and CLAUDE.md once, keeps timestamped backups, stages kit reference files, preserves existing live instruction files, and merges the notification hook. A malformed settings.json stops configuration before any files are written.
 
-From a clean Cowork/Windows box, clone the kit, then either:
+## Settings and instructions
 
-**Double-click `Install.cmd`** at the repo root (easiest). Or, equivalently, from a terminal:
+Setup writes `permissions.defaultMode = "bypassPermissions"` unless `-SkipBypass` is passed. Missing ask and deny lists start empty; existing rules and unrelated keys remain. No setting suppresses Anthropic warning dialogs. The desktop app and CLI read the same settings and CLAUDE.md files.
 
-```powershell
-git clone https://github.com/scottconverse/cowork-autonomy-kit.git
-cd cowork-autonomy-kit
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
-# then RESTART Cowork so PATH, CLAUDE.md, and hooks load
+The live Core imports the depth profile with a real standalone line:
+
+```text
+@CLAUDE-Cowork-Autonomous-Software-Development.md
 ```
 
-Both paths trigger **one** Windows UAC prompt during setup — for the
-elevated-dev-helper install in step 8. Click Yes once. Everything else is
-user-scope, no admin. Pass `-SkipHelper` (terminal) or `Install.cmd -SkipHelper`
-to skip the helper install entirely.
+Both files are installed beside each other under ~/.claude. The full profile loads every session and consumes context. Existing live CLAUDE.md is not overwritten; add that line yourself if Doctor reports it missing.
 
-> **First-run SmartScreen note.** If you downloaded the kit as a ZIP rather than
-> `git clone`, Windows tags the files with Mark-of-the-Web. Double-clicking
-> `Install.cmd` may show "Windows protected your PC" — click **More info**, then
-> **Run anyway**. One-time per ZIP. `git clone`'d files don't carry MOTW.
+## Which shell runs commands
 
-That installs the toolchain and configuration below, mostly in user scope. The one
-admin step (the elevated dev helper) stays optional and launches its UAC installer. It exists because a clean box has **no real Python** (only the Store stub), **no
-`python3`**, **no Node**, and **no user-scope package manager** — every gotcha this kit hit
-on a real fresh install is encoded in the script's ordering.
+The Code tab uses Git Bash if installed, otherwise the PowerShell tool. PowerShell can also be explicitly enabled as the primary tool. The kit's Stop hook forces PowerShell with `"shell": "powershell"` and does not use a matcher. See [hooks](https://code.claude.com/docs/en/hooks).
 
-### The no-admin install doctrine (Windows)
+## Folder still prompts
 
-Windows autonomy is mostly a package-manager problem. Preference order, highest-autonomy
-first:
+A folder still prompts after Setup: in the Code tab, open the mode selector next to the send button and pick Bypass permissions once for that folder. The app remembers a picked mode per folder and it overrides `defaultMode`.
 
-| Channel | Admin? | Use for |
-|---|---|---|
-| `scoop install <x>` | no | CLI tools (gh, ripgrep, jq, sqlite, go, rust, dotnet-sdk, semgrep…) — the default |
-| `uv tool install <x>` / `uv pip` | no | Python tools and envs (ruff, etc.) |
-| `pip install <x>` | no | Python libraries (Playwright, …) |
-| `npm i -g <x>` / `npx <x>` | no | Node tooling |
-| `winget install <x> --scope user` | no | user-scope apps (Python, …) |
-| portable zip → user dir + PATH | no | anything with no installer (Node was done this way) |
-| elevated helper → `msiexec /i … /qn` | **yes (one UAC)** | true machine installs |
+## Helper and migration
 
-Note: `winget` works both *directly* and **through the elevated helper** (machine-scope, no
-UAC) once the helper's process-runner is fixed (it is, in this kit). User-scope channels are
-still preferred *first* — less friction, reversible, no system change — which is why scoop is
-the keystone. Admin is available and reliable; it's just not the default.
+The helper serves normal, non-elevated Claude Code sessions in the Code tab and CLI. Programs are installed under `%ProgramFiles%\ClaudeElevatedHelper`; queue, results, logs and install-state.json are under `%ProgramData%\ClaudeElevatedHelper`. Read state for the actual paths. See [helper documentation](../elevated-dev-helper/README.md).
 
-## How To Apply (manual / detail)
+For older installs, run Uninstall first to remove the legacy watcher. Run the helper installer directly to re-register the task with the new paths, then Setup. The old C:\dev\ClaudeElevatedHelper directory is retained; check pending jobs before deleting it.
 
-> The Quick Start above (`Setup-Autonomy.ps1`) does everything below automatically and
-> idempotently. This section explains the same flow step-by-step for anyone who wants to
-> apply the kit by hand, or to understand exactly what Setup did.
+## Computer use
 
-1. **Back up first.** Copy your existing `~/.claude/CLAUDE.md` and `~/.claude/settings.json`
-   to timestamped `.bak` files before changing them.
-2. **Instructions (two-tier):** put `CLAUDE-Cowork-Core.md` into `~/.claude/CLAUDE.md` for
-   everyday speed. Its depth rule points Claude to the full
-   `CLAUDE-Cowork-Autonomous-Software-Development.md` for high-blast-radius work — keep that
-   file in the kit (or alongside CLAUDE.md) so it can be loaded on demand.
-3. **Permissions/autonomy:** `Setup-Autonomy.ps1` writes only `defaultMode: bypassPermissions`
-   (plus empty `ask`/`deny` if they're absent) and the notify Stop hook. It does **not** set
-   `additionalDirectories`, `allow`, or `enableAllProjectMcpServers`. Those live in
-   `settings.autonomy.example.json` for **optional manual** merge — it shows the full profile.
-   If you merge the example, Setup auto-substitutes `YOUR_USERNAME` → `%USERNAME%` on the next
-   run, so the placeholder no longer needs hand-editing. On a box that already has `ask`/`deny`
-   entries the installer **preserves** them.
-4. **Staging vs live (re-running Setup safely):** the kit refreshes a *staging* copy of its
-   reference files under `~/.claude/autonomy-kit/` on every run. The *live* files —
-   `CLAUDE.md`, the depth profile, the notify hook script — are written **only on first
-   install**. If they already exist they are backed up and **left unchanged**, so a re-run
-   never clobbers customizations. Diff your live files against the staged copies (or run
-   `Doctor-Autonomy.ps1`) when you want to pull in kit updates.
-5. **Elevated helper:** `Setup-Autonomy.ps1` step 8 triggers the helper's UAC installer
-   automatically when `ClaudeElevatedDevHelper` is absent. `-SkipHelper` to opt out. Manual
-   path remains in `elevated-dev-helper/README.md`.
-   Existing installations must run the helper installer directly to refresh its worker and
-   invoker, then merge the new job-queue guidance into the live `~/.claude/CLAUDE.md`.
-   Installation succeeds only after administrator and Windows-path self-tests pass.
-6. **Notifications (optional):** Setup wires the `notify-turn-ended.ps1` Stop hook into
-   `settings.json`. To replace it with your own, edit the live file at
-   `~/.claude/hooks/notify-turn-ended.ps1`.
+See the full profile's computer-use section for the single operating rule. The kit installs no dialog-clicking watcher. Desktop permission and browser safety checks still apply in bypass mode.
 
-## Operating Model: requested vs. unrequested
+## Rollback and verification
 
-The profile's governing line, mirrored from the Codex setup it was ported from:
+Uninstall restores the first pre-kit snapshots. If a file was originally absent it is removed only when still equal to the installed staged copy. Legacy settings without snapshots have only the kit defaultMode and notify hook stripped; timestamped backups are never selected as a substitute for the true baseline. `-WhatIf` makes no writes. General-purpose tools remain installed.
 
-- **Anything you explicitly request is done in the same turn**, to the maximum the OS and
-  tool permissions allow — including destructive, privileged, or irreversible actions. No
-  unrequested confirmations, no silent narrowing of your instructions.
-- **Only *unrequested*, model-initiated** destructive / credential-sensitive / privileged /
-  hard-to-reverse actions get a confirmation pause. That pause never applies to your
-  requests.
+Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. No clean-machine run or live desktop-app test was performed. See [test plan](../tests/TEST-PLAN.md).
 
-## Origin
-
-Lineage: this kit started as a port of a private Codex Desktop autonomy kit and has
-since diverged into a standalone Cowork tool. The two-tier instruction design (compact
-core + depth profile), the backup-before-install discipline, and the
-requested-vs-unrequested operating line came from that original; everything else
-(approve watcher, BOM-safe settings merge, staging-vs-live policy, Doctor/Uninstall,
-the elevated-dev-helper queue pattern as applied here) is kit-native.
-
-## Computer-use authorization
-
-Two permission systems:
-
-1. **Claude Code tool permissions** (Bash, PowerShell, file edits) — governed by
-   `bypassPermissions`. Handled by the kit; never prompts.
-2. **Computer-use** (`mcp__computer-use__*`: screenshots, clicking, native apps) — separate
-   `request_access` dialog, per-session, app-enforced, not affected by `bypassPermissions`.
-
-Handled by [`computer-use-approve-watcher/`](../computer-use-approve-watcher/README.md), which
-`Setup-Autonomy.ps1` installs and starts. The watcher polls UI Automation and clicks
-`Approve` automatically — the same button serves the `computer:`, `browser:`, and
-`webfetch:` permission-broker dialogs. Stop with `Uninstall-Autonomy.ps1` or
-`Stop-ScheduledTask -TaskName ClaudeApproveWatcher`. Headless alternative (schema not
-end-to-end verified): [`routine-approve.template.json`](../computer-use-approve-watcher/routine-approve.template.json).
-
-### Reference: how the gate behaves (verified against Claude `1.14271.0.0`, claude-code `2.1.181`)
-
-- `request_access` enters the desktop app's permission broker as the pseudo-tool
-  `computer:request_access`. The `computer:` / `browser:` / `webfetch:` family is special-cased
-  to always open an interactive dialog, in a branch that returns before `bypassPermissions` /
-  allow-rules / cached decisions are consulted.
-- Promotion to a standing "always allow" rule is stripped — the app logs `always-allow suppressed`.
-- Grants live on the **session** (`cuAllowedApps`), start empty each session, expire ~30 min.
-  No on-disk allow-list (verified across Local Storage, IndexedDB, and `%APPDATA%\Claude`).
-
-If you want to handle the gate manually instead of with the watcher: on first desktop need in
-a session, call `request_access` once with the full app set you'll touch (e.g. `Claude`,
-`Google Chrome`, `File Explorer`, plus the task app) — one approval covers the set; re-request
-after ~30 min or on a "not in allowlist" error. For unattended runs, a scheduled task / routine
-can carry `computer:request_access` in its `approvedPermissions` (per-task, not machine-wide).
-Bash/PowerShell and the Chrome MCP don't carry the prompt.
-
-## Safety Notes
-
-- Keep credentials and machine-specific configuration private; the source repository is public.
-- Review scripts before installing on a new machine.
-- Do not commit credentials, tokens, helper queue jobs/logs, or machine-specific generated
-  state (the `.gitignore` excludes `installed-config/`, `*.bak`, `config.toml`, and runtime
-  state).
-- Explicit requests for destructive/privileged/hard-to-reverse actions are carried out to the
-  maximum extent the active permissions and OS allow. Only *unrequested* such actions get a
-  confirmation pause. Higher-priority Claude Code, OS, legal, and safety rules still apply.
+Official references: [desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [settings](https://code.claude.com/docs/en/settings-reference).

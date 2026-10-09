@@ -1,73 +1,22 @@
-<#
-.SYNOPSIS
-    Regression guard for the Uninstall bak-format filter (v1.3.3 fix).
-
-.DESCRIPTION
-    Uninstall-Autonomy.ps1's Restore-LatestBak picks the newest backup that
-    matches the kit's own format: `<name>.bak-YYYYMMDD-HHmmss`. Backups created
-    by other tools (e.g. `<name>.bak-pre-ponytail`, `<name>.bak-cowork-foo`) must
-    be skipped, otherwise Uninstall greedily restores unrelated state.
-
-    This test materializes a temp dir with one kit-format backup and three
-    non-kit backups, applies the regex, and asserts the right one wins.
-
-    The regex below MUST stay in sync with Uninstall-Autonomy.ps1's
-    Restore-LatestBak. If you change one, change the other.
-
-    Exit 0 = pass. Exit 1 = regression.
-
-.EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File tests\Test-UninstallBakFilter.ps1
-#>
-[CmdletBinding()]
-param()
-
-$ErrorActionPreference = 'Stop'
-
-$sandbox = Join-Path $env:TEMP ("autonomy-kit-bakfilter-" + [guid]::NewGuid().ToString('n'))
-New-Item -ItemType Directory -Force -Path $sandbox | Out-Null
-
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
+$kit=Split-Path $PSScriptRoot -Parent
+Import-ConfigurationFunctions $kit
+$passed=0; $root=Join-Path $env:TEMP ('claude-uninstall-'+[guid]::NewGuid().ToString('n'))
+New-Item -ItemType Directory -Path $root | Out-Null
 try {
-    # Create one kit-format bak and three non-kit baks alongside a "live" file.
-    'live' | Set-Content -LiteralPath (Join-Path $sandbox 'settings.json')
-    'kit-format'    | Set-Content -LiteralPath (Join-Path $sandbox 'settings.json.bak-20260628-151845')
-    'pre-ponytail'  | Set-Content -LiteralPath (Join-Path $sandbox 'settings.json.bak-pre-ponytail')
-    'cowork-tagged' | Set-Content -LiteralPath (Join-Path $sandbox 'settings.json.bak-cowork-20260620-083430')
-    'restore-tag'   | Set-Content -LiteralPath (Join-Path $sandbox 'settings.json.bak-pre-ponytail-restore-20260628-145442')
-
-    # Set LastWriteTimes so the non-kit pre-ponytail is the MOST RECENT (would beat
-    # the kit-format file in a naive Sort-Object -Descending). The kit-format file
-    # is intentionally older to prove the regex (not the timestamp) is the gate.
-    (Get-Item (Join-Path $sandbox 'settings.json.bak-20260628-151845')).LastWriteTime           = (Get-Date).AddHours(-2)
-    (Get-Item (Join-Path $sandbox 'settings.json.bak-pre-ponytail')).LastWriteTime              = (Get-Date)
-    (Get-Item (Join-Path $sandbox 'settings.json.bak-cowork-20260620-083430')).LastWriteTime    = (Get-Date).AddHours(-1)
-    (Get-Item (Join-Path $sandbox 'settings.json.bak-pre-ponytail-restore-20260628-145442')).LastWriteTime = (Get-Date).AddMinutes(-30)
-
-    $name = 'settings.json'
-    $rx   = "^" + [regex]::Escape($name) + "\.bak-\d{8}-\d{6}$"
-    $picked = Get-ChildItem -LiteralPath $sandbox -Filter "$name.bak-*" |
-        Where-Object { $_.Name -match $rx } |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-
-    if (-not $picked) {
-        Write-Host "FAIL: regex matched zero files; expected the kit-format bak to win." -ForegroundColor Red
-        exit 1
-    }
-    if ($picked.Name -ne 'settings.json.bak-20260628-151845') {
-        Write-Host ("FAIL: picked '{0}', expected 'settings.json.bak-20260628-151845'" -f $picked.Name) -ForegroundColor Red
-        exit 1
-    }
-
-    # Also assert the non-kit baks would have won under a naive (no-regex) policy --
-    # i.e. confirm the test is meaningful (would catch a regression to the v1.3.2 behavior).
-    $naive = Get-ChildItem -LiteralPath $sandbox -Filter "$name.bak-*" |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($naive.Name -eq 'settings.json.bak-20260628-151845') {
-        Write-Host "WARN: test fixture failed to make a non-kit bak the most-recent; the regression check is weaker than intended." -ForegroundColor Yellow
-    }
-
-    Write-Host "PASS: bak-format regex correctly skipped non-kit backups." -ForegroundColor Green
-    exit 0
-} finally {
-    Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
-}
+    $p=Join-Path $root 'settings.json'
+    [IO.File]::WriteAllText($p,'{"custom":"keep","permissions":{"defaultMode":"bypassPermissions","deny":["Read(secret)"]},"hooks":{"Stop":[{"hooks":[{"command":"notify-turn-ended"},{"command":"foreign"}]}]}}')
+    [IO.File]::WriteAllText("$p.bak-20990101-010101",'{"custom":"wrong-backup"}')
+    $hash=(Get-FileHash $p).Hash
+    Uninstall-KitConfiguration -ClaudeRoot $root -WhatIf
+    Assert-Kit ((Get-FileHash $p).Hash -eq $hash) 'WhatIf makes no legacy-strip write'
+    Uninstall-KitConfiguration -ClaudeRoot $root
+    $s=Get-Content $p -Raw | ConvertFrom-Json
+    Assert-Kit ($s.custom -eq 'keep') 'timestamped backups are never restored'
+    Assert-Kit (-not ($s.permissions.PSObject.Properties.Name -contains 'defaultMode')) 'kit bypass stripped'
+    Assert-Kit ($s.permissions.deny[0] -eq 'Read(secret)') 'deny preserved'
+    Assert-Kit ($s.hooks.Stop[0].hooks[0].command -eq 'foreign') 'foreign mixed hook preserved'
+    Assert-Kit ([IO.File]::ReadAllBytes($p)[0] -ne 239) 'legacy write has no BOM'
+    Write-Host "SUMMARY: $passed PASS / 0 FAIL"
+} finally { Remove-TestRoot $root }

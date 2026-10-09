@@ -110,38 +110,6 @@ try {
     Add-Result "elevated_helper_installed" "INFO" $(if ($helper) { "installed" } else { "not installed (optional)" })
 } catch { Add-Result "elevated_helper_installed" "INFO" $_.Exception.Message }
 
-# 12. Approve-watcher task registered (INFO if absent -- this harness is intended to run
-#     pre- AND post-Setup; absence is "not installed yet", not "broken").
-try {
-    $w = Get-ScheduledTask -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
-    if ($w) {
-        $state = $w.State
-        Add-Result "approve_watcher_task" $(if ($state -in 'Ready','Running') { "PASS" } else { "FAIL" }) "state=$state"
-    } else {
-        Add-Result "approve_watcher_task" "INFO" "not installed (run Setup-Autonomy.ps1 to register)"
-    }
-} catch { Add-Result "approve_watcher_task" "INFO" $_.Exception.Message }
-
-# 13. Approve-watcher process alive (only meaningful if the task is installed; INFO otherwise)
-try {
-    $alive = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'Watch-ComputerUseApprove' }
-    if ($alive) {
-        Add-Result "approve_watcher_process" "PASS" "PID(s): $(($alive.ProcessId) -join ',')"
-    } elseif ($w) {
-        Add-Result "approve_watcher_process" "FAIL" "task installed but no powershell.exe running Watch-ComputerUseApprove (Start-ScheduledTask?)"
-    } else {
-        Add-Result "approve_watcher_process" "INFO" "n/a -- watcher task not installed"
-    }
-} catch { Add-Result "approve_watcher_process" "INFO" $_.Exception.Message }
-
-# 14. UI Automation assemblies load (the watcher's hard dependency)
-try {
-    Add-Type -AssemblyName UIAutomationClient -ErrorAction Stop
-    Add-Type -AssemblyName UIAutomationTypes  -ErrorAction Stop
-    Add-Result "uiautomation_assemblies" "PASS" "UIAutomationClient + UIAutomationTypes loaded"
-} catch { Add-Result "uiautomation_assemblies" "FAIL" $_.Exception.Message }
-
 # Cleanup
 if (-not $KeepSandbox) {
     Remove-Item -LiteralPath $Sandbox -Recurse -Force -ErrorAction SilentlyContinue
