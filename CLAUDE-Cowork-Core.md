@@ -34,8 +34,8 @@ Unescaped Windows backslashes produce invalid JSON; the invoker uses `ConvertTo-
   -Action RunTrustedPowerShellScript -ScriptPath 'C:\dev\Example\x.ps1'
 ```
 
-For custom installs, read `invoker_script`, `install_root`, and `task_name` from the
-helper's `%ProgramData%\ClaudeElevatedHelper\install-state.json` and pass `-Root` and `-TaskName` explicitly. The invoker
+For custom installs, read `invoker_script`, `data_root`, and `task_name` from the
+helper's `%ProgramData%\ClaudeElevatedHelper\install-state.json` and pass data_root as `-Root` and task_name as `-TaskName` explicitly. The invoker
 returns a job ID; read `done\<job_id>.result.json` or `failed\<job_id>.error.json`.
 For script/install actions, require both `status = "ok"` and `result.exit_code = 0`;
 being in `done\` alone does not prove the child command succeeded.

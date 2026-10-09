@@ -2,6 +2,31 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v1.6.0 - 2026-10-09
+
+### Changed
+- Target Claude Code on Windows: desktop Code tab primary, CLI secondary. Cowork tab is out of scope; historical repository and instruction filenames stay stable.
+- Document the Pro/Max bypass toggle, per-folder selector precedence, Git Bash/PowerShell behavior and full tray-quit restart.
+- Load the full depth profile through a real import every session, with context cost disclosed.
+- Upgrade the notify Stop hook in place to explicit PowerShell without matcher; preserve unrelated hooks and permission rules.
+- Add confirmation with -Yes and -SkipBypass; migrate attribution to the current object shape.
+
+### Security
+- Protect worker/invoker/path-test code in Program Files; separate queue/results/logs and state under ProgramData with verified explicit ACLs.
+- Limit user-script trust to C:\dev and Documents\Claude; inspect existing development-root write grants and retain old helper jobs during migration.
+- Remove the dialog-clicking watcher and unverified routine template; retain legacy task removal in Uninstall.
+- Document accepted prompt-injection and administrator-script risks and deny-rule support.
+- Remove tracked audit artifacts and pin all workflow actions by full commit SHA.
+
+### Fixed
+- Preserve the first pre-kit settings and instruction snapshots across reruns; restore the true baseline instead of a newest timestamped backup. Originally absent files are removed only when unchanged.
+- Refuse bad settings JSON before configuration writes; make legacy stripping respect WhatIf and UTF-8 without BOM.
+- Drain queue arrivals during active work while retaining serial IgnoreNew scheduling. The final-empty-check scheduling race remains documented.
+
+### Verification
+- Tests extract real production functions by AST. Add isolated lifecycle, malformed-input, rollback, ACL-readback, queue-arrival and forward-slash portability coverage, plus Windows PowerShell 5.1 CI and current-version/minimum-text-size site tests.
+- No clean-machine run, full Setup execution, live helper installation or live desktop-app test was performed for this release.
+
 ## v1.5.2 - 2026-10-09
 
 ### Fixed
@@ -185,7 +210,7 @@ Cleared every finding from the v1.3.3 GauntletGate lite audit.
   Without a BOM, PS 5.1 decodes the script body as the system codepage; the em-dash bytes
   become invalid sequence, producing "string is missing the terminator" parser errors that
   prevent the whole script from running. The most visible victim was
-  `Install-ApproveWatcherTask.ps1`, which silently failed at parse time on first install  - 
+  `Install-ApproveWatcherTask.ps1`, which silently failed at parse time on first install  -
   Setup then printed a false "installed + started" message and tried to `Start-ScheduledTask`
   on a task that was never registered.
 - Renamed Doctor's `H` helper function to `Hdr`. `H` is PS 5.1's built-in alias for
