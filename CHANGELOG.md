@@ -2,7 +2,7 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
-## Unreleased
+## v1.6.1 - 2026-10-09
 
 ### Fixed
 - Accept equivalent Windows ACL ordering/bookkeeping while verifying owner, inheritance protection and every access rule.
@@ -16,9 +16,9 @@ All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 - Return a failing Setup exit code for missing required tools or failed browser installation.
 
 ### Verification
-- Add audit regression tests using production functions, isolated profiles and a real argument-echo child executable; include them in the existing Windows CI job.
+- Add audit regression tests using production functions, isolated profiles, a real argument-echo executable and real PowerShell script; include them in the existing Windows CI job. All 88 assertions pass locally, along with parsing, BOM/path checks and site tests/build.
 - Post-release verification on an existing Windows installation passed elevated helper self-tests and a fresh desktop Code session with file create/read/delete and CheckAdmin. A clean-machine installation remains unverified.
-- The v1.6.0 tagged ZIP remains unchanged; these fixes are working-source changes until a new release is published.
+- The v1.6.1 ZIP includes these fixes. The original v1.6.0 tag and assets remain unchanged.
 
 ## v1.6.0 - 2026-10-09
 

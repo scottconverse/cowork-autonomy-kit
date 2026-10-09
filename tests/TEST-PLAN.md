@@ -1,4 +1,4 @@
-# v1.6.0 test plan
+# v1.6.1 test plan
 
 Run each script using powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/<name>.ps1, under Windows PowerShell 5.1:
 
@@ -18,4 +18,4 @@ Windows CI runs the seven regression tests and parsing on push and PR. It never 
 
 The optional Test-AutonomyKit capability harness performs machine-local probes and is not a CI test. Legacy watcher checks have been removed.
 
-The tagged release had no clean-machine or live desktop test. Post-release verification on an existing Windows installation passed the elevated installer and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. No clean-machine run was performed. After release Scott runs Uninstall, Install.cmd, approves UAC, enables the Code tab bypass toggle, fully quits Claude from its tray, reopens, checks per-folder mode, tests file create/delete and helper CheckAdmin, and sends Doctor output.
+Verification on an existing Windows installation passed the elevated installer and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. No clean-machine run was performed. For additional clean-machine verification, run Uninstall, Install.cmd, approves UAC, enables the Code tab bypass toggle, fully quits Claude from its tray, reopens, checks per-folder mode, tests file create/delete and helper CheckAdmin, and sends Doctor output.

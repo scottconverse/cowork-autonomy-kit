@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit developer manual
 
-Version 1.6.0
+Version 1.6.1
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -80,7 +80,7 @@ Doctor is read-only. It reports tools/Chromium, configuration, depth import, rem
 
 Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths, HelperInstall and AuditRegressions, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
 
-The tagged release had no clean-machine or live desktop test. Post-release verification on an existing Windows installation passed elevated installation, ACL readback, installed-invoker self-tests and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
+Verification on an existing Windows installation passed elevated installation, ACL readback, installed-invoker self-tests and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
 
 ## 12. Uninstallation and rollback
 

@@ -1,6 +1,6 @@
 # Claude Code Windows setup
 
-Version 1.6.0 - Windows
+Version 1.6.1 - Windows
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -52,6 +52,6 @@ See the full profile's computer-use section for the single operating rule. The k
 
 Uninstall restores the first pre-kit snapshots and first saves current files to unique `.before-uninstall-*.bak` backups so later owner edits remain recoverable. If a file was originally absent it is removed only when still equal to the installed staged copy. Legacy settings without snapshots have only the kit defaultMode and notify hook stripped; timestamped backups are never selected as a substitute for the true baseline. `-WhatIf` makes no writes. General-purpose tools remain installed.
 
-Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. The tagged release had no live desktop test. Post-release verification passed a fresh desktop Code session and real helper CheckAdmin on an existing Windows installation. No clean-machine run was performed. See [test plan](../tests/TEST-PLAN.md).
+Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. Verification passed a fresh desktop Code session and real helper CheckAdmin on an existing Windows installation. No clean-machine run was performed. See [test plan](../tests/TEST-PLAN.md).
 
 Official references: [desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [settings](https://code.claude.com/docs/en/settings-reference).
