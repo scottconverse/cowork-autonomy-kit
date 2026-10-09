@@ -1,6 +1,6 @@
 # Cowork Autonomy Kit
 
-Version 1.5.1 · Windows · Independent community project, not affiliated with Anthropic.
+Version 1.5.2 · Windows · Independent community project, not affiliated with Anthropic.
 
 A development-environment kit for Claude Code and Cowork on Windows: toolchain setup, persistent instructions, an elevated job helper, notifications, and diagnostic scripts. For developers comfortable reviewing scripts and managing their own machine.
 
@@ -17,7 +17,7 @@ A development-environment kit for Claude Code and Cowork on Windows: toolchain s
 
 Review the [full setup guide](docs/SETUP.md). Setup changes Claude Code permissions to `bypassPermissions` and installs a watcher that automatically clicks desktop permission dialogs. These changes reduce per-action review opportunities. The optional helper executes administrator-level scripts; trusted script paths do not sandbox their effects.
 
-Download and extract the [v1.5.1 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.5.1), inspect the scripts, then run `Install.cmd` if you accept those changes. The helper requests Windows UAC approval. Restart Cowork after setup. The kit does not install Claude itself.
+Download and extract the [v1.5.2 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.5.2), inspect the scripts, then run `Install.cmd` if you accept those changes. The helper requests Windows UAC approval. Restart Cowork after setup. The kit does not install Claude itself.
 
 Existing helper installations require a direct helper-installer rerun, plus a manual merge of revised Core guidance into live instructions.
 
@@ -32,7 +32,7 @@ Existing helper installations require a direct helper-installer rerun, plus a ma
 
 ## Project status and participation
 
-Functional but evolving. Helper regressions and existing-machine runtime checks passed for v1.5.1; clean-machine lifecycle and native Cowork behavioral testing were not performed. See the release notes for exact scope. Report reproducible problems through [GitHub Issues](https://github.com/scottconverse/cowork-autonomy-kit/issues).
+Functional but evolving. Helper regressions and existing-machine runtime checks passed for v1.5.1. The v1.5.2 Playwright fix was parse-checked and logic-tested outside Windows only; clean-machine lifecycle and native Cowork behavioral testing were not performed. See the release notes for exact scope. Report reproducible problems through [GitHub Issues](https://github.com/scottconverse/cowork-autonomy-kit/issues).
 
 ## License
 

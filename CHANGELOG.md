@@ -2,7 +2,7 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
-## Unreleased
+## v1.5.2 - 2026-10-09
 
 ### Fixed
 - **`Setup-Autonomy.ps1` step 5 no longer aborts Setup on a clean machine.** The
