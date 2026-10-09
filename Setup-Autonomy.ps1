@@ -1,51 +1,27 @@
 <#
 .SYNOPSIS
-    One-command toolchain + config bootstrap for the Cowork Autonomy Kit on a fresh
-    Windows machine. Run NON-admin, then restart Cowork.
-
+    Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 .DESCRIPTION
-    A clean Cowork/Windows box starts with no real Python (only the Microsoft Store stub),
-    no `python3`, no Node, no user-scope package manager, and `winget` that needs admin for
-    machine installs and is flaky inside non-interactive elevated tasks. This script fixes
-    all of that with user-scope, no-admin installs, in the order that actually works:
-
-      1. Python (winget user-scope) + a real `python3.exe` shim  (hooks call `python3`)
-      2. uv            (astral.sh installer)
-      3. scoop         (the no-admin package-manager keystone)
-      4. node-lts, gh, ripgrep, jq, sqlite   (via scoop)
-      5. Playwright + chromium browser        (via pip)
-      6. Cowork config / staging:
-         - Always refreshes a staging copy of the kit's files under ~/.claude/autonomy-kit/.
-         - Live files (CLAUDE.md, depth profile, notify hook) are written ONLY on first
-           install. If they already exist they are backed up and LEFT UNCHANGED -- re-run
-           Setup safely without clobbering customizations.
-         - settings.json: idempotent key-level merge (bypassPermissions + Stop hook +
-           YOUR_USERNAME substitution). Skipped entirely with -SkipConfig.
-      7. computer-use-approve-watcher: registers and starts a user-scope logon scheduled
-         task that auto-clicks the computer-use / browser / webfetch Approve dialog.
-      8. elevated-dev-helper: triggers the helper's UAC installer if the
-         ClaudeElevatedDevHelper task is not already present. Skip with -SkipHelper.
-
-    Idempotent: re-running skips anything already present and never duplicates settings
-    entries. Everything is user-scope; the only admin step (the elevated dev helper) is left
-    to its own UAC installer and printed at the end.
-
+    Shows changes and asks for confirmation unless -Yes. Installs missing user-scope tools,
+    merges settings, snapshots original files once, preserves existing live instructions,
+    and optionally launches a visible UAC helper installer. The Cowork tab is out of scope.
+.PARAMETER SkipBypass
+    Leave defaultMode unchanged while applying other selected setup changes.
+.PARAMETER Yes
+    Skip the Continue? question for scripted runs.
 .PARAMETER SkipConfig
-    Install the toolchain only; leave ~/.claude/CLAUDE.md and settings.json untouched.
-
-.PARAMETER SkipBrowsers
-    Install the Playwright package but skip the chromium browser download.
-
+    Skip all configuration files and snapshots.
 .PARAMETER SkipHelper
-    Skip the elevated-dev-helper UAC installer (step 8).
-
-.EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\Setup-Autonomy.ps1
+    Skip administrator-helper installation.
+.PARAMETER SkipBrowsers
+    Skip the Chromium browser download.
 #>
 [CmdletBinding()]
 param(
     [switch]$SkipConfig,
     [switch]$SkipBrowsers,
+    [switch]$Yes,
+    [switch]$SkipBypass,
     [switch]$SkipHelper
 )
 
@@ -71,6 +47,111 @@ function Find-UserPython {
         Sort-Object { [int]($_.Directory.Name.Substring(7)) } -Descending |
         Select-Object -First 1
 }
+
+function Read-KitSettings {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return [pscustomobject]@{} }
+    try {
+        $value = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $value -or $value -isnot [pscustomobject]) { throw 'Expected a JSON object' }
+        foreach ($key in @('permissions','hooks')) {
+            if ($value.PSObject.Properties.Name -contains $key -and $value.$key -isnot [pscustomobject]) { throw "$key must be an object" }
+        }
+        return $value
+    } catch { throw "Invalid settings file '$Path': $($_.Exception.Message). Nothing was written." }
+}
+
+function New-PreKitSnapshot {
+    param([string]$Path)
+    $snapshot = "$Path.pre-autonomy-kit"
+    $absent = "$snapshot.absent"
+    if ((Test-Path -LiteralPath $snapshot) -or (Test-Path -LiteralPath $absent)) { return }
+    if (Test-Path -LiteralPath $Path) { Copy-Item -LiteralPath $Path -Destination $snapshot }
+    else { [IO.File]::WriteAllText($absent, '', [Text.UTF8Encoding]::new($false)) }
+}
+
+function Install-LiveOrLeave {
+    param([string]$Source, [string]$Destination)
+    if (Test-Path -LiteralPath $Destination) {
+        Copy-Item -LiteralPath $Destination -Destination "$Destination.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss-fffffff'))"
+        Write-Host "Kept customized or existing live file: $Destination"
+    } else { Copy-Item -LiteralPath $Source -Destination $Destination }
+}
+
+function Merge-KitSettings {
+    param([pscustomobject]$Settings, [string]$ClaudeRoot, [switch]$SkipBypass)
+    if (-not ($Settings.PSObject.Properties.Name -contains 'permissions')) { $Settings | Add-Member permissions ([pscustomobject]@{}) }
+    if (-not $SkipBypass) {
+        if ($Settings.permissions.PSObject.Properties.Name -contains 'defaultMode') { $Settings.permissions.defaultMode = 'bypassPermissions' }
+        else { $Settings.permissions | Add-Member defaultMode 'bypassPermissions' }
+    }
+    foreach ($key in @('ask','deny')) {
+        if (-not ($Settings.permissions.PSObject.Properties.Name -contains $key)) { $Settings.permissions | Add-Member $key @() }
+    }
+    if (-not ($Settings.PSObject.Properties.Name -contains 'hooks')) { $Settings | Add-Member hooks ([pscustomobject]@{}) }
+    $hookCmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $ClaudeRoot 'hooks\notify-turn-ended.ps1') + '"'
+    $notify = [pscustomobject]@{type='command';shell='powershell';command=$hookCmd}
+    $stop = @(); $wired = $false
+    foreach ($entry in @($Settings.hooks.Stop)) {
+        if ($null -eq $entry) { continue }
+        $kept = @(); $touched = $false
+        foreach ($hook in @($entry.hooks)) {
+            if ([string]$hook.command -like '*notify-turn-ended*') {
+                $touched = $true
+                if (-not $wired) { $kept += $notify; $wired = $true }
+            } else { $kept += $hook }
+        }
+        if ($touched) {
+            $entry.PSObject.Properties.Remove('matcher')
+            $entry | Add-Member hooks $kept -Force
+        }
+        if ($kept.Count -gt 0 -or -not $touched) { $stop += $entry }
+    }
+    if (-not $wired) { $stop += [pscustomobject]@{hooks=@($notify)} }
+    $Settings.hooks | Add-Member Stop $stop -Force
+    if ($Settings.permissions.PSObject.Properties.Name -contains 'additionalDirectories') {
+        $dirs = @($Settings.permissions.additionalDirectories | ForEach-Object { [string]$_ -replace 'YOUR_USERNAME', $env:USERNAME })
+        $Settings.permissions | Add-Member additionalDirectories $dirs -Force
+    }
+    return $Settings
+}
+
+function Install-KitConfiguration {
+    param([string]$KitRoot, [string]$ClaudeRoot, [switch]$SkipBypass)
+    $settingsPath = Join-Path $ClaudeRoot 'settings.json'
+    # Validate before directories, backups, snapshots or live files are changed.
+    $settings = Read-KitSettings -Path $settingsPath
+    $stage = Join-Path $ClaudeRoot 'autonomy-kit'
+    New-Item -ItemType Directory -Force -Path $stage | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeRoot 'hooks') | Out-Null
+    foreach ($name in @('settings.json','CLAUDE.md','CLAUDE-Cowork-Autonomous-Software-Development.md','hooks\notify-turn-ended.ps1')) {
+        New-PreKitSnapshot -Path (Join-Path $ClaudeRoot $name)
+    }
+    $pairs = @(
+        @('CLAUDE-Cowork-Core.md','CLAUDE.md'),
+        @('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),
+        @('hooks\notify-turn-ended.ps1','hooks\notify-turn-ended.ps1')
+    )
+    foreach ($pair in $pairs) {
+        $source = Join-Path $KitRoot $pair[0]
+        Copy-Item -LiteralPath $source -Destination (Join-Path $stage (Split-Path -Leaf $source)) -Force
+        Install-LiveOrLeave -Source $source -Destination (Join-Path $ClaudeRoot $pair[1])
+    }
+    Copy-Item -LiteralPath (Join-Path $KitRoot 'settings.autonomy.example.json') -Destination $stage -Force
+    if (Test-Path -LiteralPath $settingsPath) { Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss-fffffff'))" }
+    $merged = Merge-KitSettings -Settings $settings -ClaudeRoot $ClaudeRoot -SkipBypass:$SkipBypass
+    [IO.File]::WriteAllText($settingsPath, ($merged | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
+    $createdSettings = Join-Path $stage 'settings.created-by-kit.json'
+    if ((Test-Path -LiteralPath "$settingsPath.pre-autonomy-kit.absent") -and -not (Test-Path -LiteralPath $createdSettings)) {
+        Copy-Item -LiteralPath $settingsPath -Destination $createdSettings
+    }
+    Write-Host "Merged Claude Code settings and staged profiles at $stage"
+}
+
+Write-Host 'Setup will install missing developer tools, merge Claude Code settings, preserve live CLAUDE.md, and wire the notification hook.'
+Write-Host ('Bypass mode: ' + $(if ($SkipBypass) { 'unchanged (-SkipBypass)' } else { 'defaultMode=bypassPermissions; existing ask/deny retained' }))
+Write-Host ('Elevated helper: ' + $(if ($SkipHelper) { 'skipped' } else { 'optional administrator helper; Windows UAC if installation is needed' }))
+if (-not $Yes -and (Read-Host 'Continue? [y/N]') -notmatch '^(?i)y(es)?$') { Write-Host 'Cancelled; no changes made.'; return }
 
 # ---------------------------------------------------------------- 1. Python + python3 shim
 Step "Python (user-scope) + python3 shim"
@@ -139,7 +220,7 @@ foreach ($pkg in $wanted.Keys) {
 }
 
 # ---------------------------------------------------------------------------- 5. Playwright
-Step "Playwright + browsers"
+Step "Playwright + chromium browser"
 $py3cmd = (Get-Command python3 -ErrorAction SilentlyContinue).Source
 if (-not $py3cmd -and $pyExe) { $py3cmd = Join-Path $pyExe.Directory.FullName "python3.exe" }
 if ($py3cmd) {
@@ -180,105 +261,9 @@ if ($py3cmd) {
     Write-Warning "python3 not found - Playwright step skipped. Install Python and re-run Setup."
 }
 
-# ------------------------------------------------------------------------------- 6. config
+# 6. Claude Code configuration
 if (-not $SkipConfig) {
-    Step "Cowork config / profile staging (~/.claude)"
-    $cl    = "$env:USERPROFILE\.claude"
-    $stage = Join-Path $cl "autonomy-kit"
-    New-Item -ItemType Directory -Force -Path $cl    | Out-Null
-    New-Item -ItemType Directory -Force -Path $stage | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $cl "hooks") | Out-Null
-
-    # Stage the kit's reference copies -- always refreshed; never user-edited.
-    Copy-Item "$kit\CLAUDE-Cowork-Core.md"                                 $stage -Force
-    Copy-Item "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md"      $stage -Force
-    Copy-Item "$kit\settings.autonomy.example.json"                        $stage -Force
-    Copy-Item "$kit\hooks\notify-turn-ended.ps1"                           $stage -Force
-    Write-Host "staged kit files under $stage (refreshed)"
-
-    # Live files: create only if absent. If present, back up and leave the user's copy alone.
-    function Install-LiveOrLeave($src, $dst) {
-        if (Test-Path -LiteralPath $dst) {
-            Copy-Item $dst "$dst.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
-            Write-Host ("kept existing {0} (backup made; merge from staging if you want kit updates)" -f (Split-Path -Leaf $dst))
-        } else {
-            Copy-Item $src $dst -Force
-            Write-Host "created $dst"
-        }
-    }
-    Install-LiveOrLeave "$kit\CLAUDE-Cowork-Core.md"                            (Join-Path $cl "CLAUDE.md")
-    Install-LiveOrLeave "$kit\CLAUDE-Cowork-Autonomous-Software-Development.md" (Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md")
-    Install-LiveOrLeave "$kit\hooks\notify-turn-ended.ps1"                      (Join-Path $cl "hooks\notify-turn-ended.ps1")
-
-    $sp = Join-Path $cl "settings.json"
-    $settings = $null
-    if (Test-Path -LiteralPath $sp) {
-        Copy-Item $sp "$sp.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" -Force
-        try { $settings = Get-Content $sp -Raw | ConvertFrom-Json } catch { $settings = $null }
-    }
-    if (-not $settings) { $settings = [pscustomobject]@{} }
-
-    # permissions: bypassPermissions, empty ask/deny (preserve any existing allow)
-    if (-not ($settings.PSObject.Properties.Name -contains 'permissions')) {
-        $settings | Add-Member permissions ([pscustomobject]@{}) -Force
-    }
-    $settings.permissions | Add-Member defaultMode "bypassPermissions" -Force
-    if (-not ($settings.permissions.PSObject.Properties.Name -contains 'ask'))  { $settings.permissions | Add-Member ask  @() -Force }
-    if (-not ($settings.permissions.PSObject.Properties.Name -contains 'deny')) { $settings.permissions | Add-Member deny @() -Force }
-
-    # hooks.Stop -> notify (idempotent: only add if not already wired)
-    $hookCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$cl\hooks\notify-turn-ended.ps1`""
-    if (-not ($settings.PSObject.Properties.Name -contains 'hooks')) {
-        $settings | Add-Member hooks ([pscustomobject]@{}) -Force
-    }
-    $stop = @()
-    if ($settings.hooks.PSObject.Properties.Name -contains 'Stop') { $stop = @($settings.hooks.Stop) }
-    $already = $false
-    foreach ($e in $stop) { foreach ($h in @($e.hooks)) { if ("$($h.command)" -like "*notify-turn-ended*") { $already = $true } } }
-    if (-not $already) {
-        $stop += [pscustomobject]@{ matcher = ""; hooks = @([pscustomobject]@{ type = "command"; command = $hookCmd }) }
-    }
-    $settings.hooks | Add-Member Stop $stop -Force
-
-    # additionalDirectories: if any entry contains the literal "YOUR_USERNAME" placeholder
-    # (from a manual merge of settings.autonomy.example.json), substitute the real user name.
-    if ($settings.permissions.PSObject.Properties.Name -contains 'additionalDirectories') {
-        $subbed = $false
-        $newDirs = @()
-        foreach ($d in @($settings.permissions.additionalDirectories)) {
-            $orig = "$d"
-            $fixed = $orig -replace 'YOUR_USERNAME', $env:USERNAME
-            if ($fixed -ne $orig) { $subbed = $true }
-            $newDirs += $fixed
-        }
-        if ($subbed) {
-            $settings.permissions | Add-Member additionalDirectories $newDirs -Force
-            Write-Host "substituted YOUR_USERNAME -> $env:USERNAME in additionalDirectories"
-        }
-    }
-
-    # Write UTF-8 WITHOUT BOM. PS 5.1's `Set-Content -Encoding UTF8` prepends a BOM,
-    # which breaks naive JSON consumers (python json.loads, etc.). See user memory
-    # feedback-powershell-utf8-bom-trap.md.
-    $json = $settings | ConvertTo-Json -Depth 20
-    [System.IO.File]::WriteAllText($sp, $json, [System.Text.UTF8Encoding]::new($false))
-    Write-Host "merged settings.json (bypassPermissions + notify Stop hook; UTF-8 no BOM)"
-}
-
-# ----------------------------------------------------------- 7. computer-use approve watcher
-Step "computer-use approve watcher"
-$watcherInstaller = Join-Path $kit "computer-use-approve-watcher\Install-ApproveWatcherTask.ps1"
-if (Test-Path -LiteralPath $watcherInstaller) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $watcherInstaller
-    $w = Get-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
-    if ($w) {
-        Start-ScheduledTask -TaskName ClaudeApproveWatcher -ErrorAction SilentlyContinue
-        Write-Host "approve watcher: installed + started (task ClaudeApproveWatcher)"
-    } else {
-        Write-Warning "approve watcher install FAILED (task not registered). Inspect errors above; re-run computer-use-approve-watcher\Install-ApproveWatcherTask.ps1 manually."
-    }
-} else {
-    Write-Warning "approve watcher installer not found: $watcherInstaller"
+    Install-KitConfiguration -KitRoot $kit -ClaudeRoot (Join-Path $env:USERPROFILE '.claude') -SkipBypass:$SkipBypass
 }
 
 # ------------------------------------------------------------------- 8. elevated-dev-helper
@@ -290,7 +275,7 @@ if (-not $SkipHelper) {
         Write-Host "ClaudeElevatedDevHelper already installed - skip"
     } elseif (Test-Path -LiteralPath $helperInstall) {
         Write-Host "launching helper installer (Windows UAC prompt expected)..."
-        $helperProcess = Start-Process -FilePath $helperInstall -Verb RunAs -WindowStyle Hidden -Wait -PassThru
+        $helperProcess = Start-Process -FilePath $helperInstall -Verb RunAs -WindowStyle Normal -Wait -PassThru
         if ($helperProcess.ExitCode -ne 0) { throw "Helper installer failed with exit code $($helperProcess.ExitCode)." }
         $helperTask = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
         Write-Host ("helper: {0}" -f $(if ($helperTask) { 'installed' } else { 'NOT installed (UAC declined or installer error)' }))
@@ -309,7 +294,7 @@ foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','s
 $report.GetEnumerator() | ForEach-Object { "{0,-10} {1}" -f $_.Key, $_.Value } | Write-Host
 
 Write-Host "`nNEXT:" -ForegroundColor Green
-Write-Host "  1. RESTART Cowork/Claude Code so the new PATH, CLAUDE.md, and hooks load."
-Write-Host "  2. Inventory check anytime, from the kit dir:"
-Write-Host "       powershell -NoProfile -ExecutionPolicy Bypass -File `"$kit\Doctor-Autonomy.ps1`""
-Write-Host "  3. Install any other tool on demand, no admin, via: scoop install <x> | uv tool install <x> | pip install <x> | npm i -g <x>."
+Write-Host "  1. In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions."
+Write-Host "  2. Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles."
+Write-Host "  3. Run Doctor-Autonomy.ps1. If depth profile import is missing, add @CLAUDE-Cowork-Autonomous-Software-Development.md on its own line to your live CLAUDE.md."
+Write-Host "  4. If a folder still prompts, select Bypass permissions once for that folder in the Code tab."

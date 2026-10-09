@@ -1,162 +1,83 @@
 <#
 .SYNOPSIS
-    Reverses the config layer installed by Setup-Autonomy.ps1.
-
+    Restore the first pre-kit Claude Code configuration; remove legacy watcher task.
 .DESCRIPTION
-    - Stops and removes the ClaudeApproveWatcher scheduled task (always).
-    - Stops and removes the ClaudeElevatedDevHelper scheduled task (only with -RemoveHelper).
-    - Restores the most recent ~/.claude/settings.json.bak if present, else removes the
-      bypassPermissions + notify-hook entries written by Setup.
-    - Restores the most recent ~/.claude/CLAUDE.md.bak if present, else deletes CLAUDE.md.
-    - Leaves the toolchain (python, scoop, node, gh, ripgrep, jq, sqlite, uv, playwright)
-      alone -- those are general-purpose, not specific to the kit.
-
-.PARAMETER RemoveHelper
-    Also unregister the ClaudeElevatedDevHelper task. Files under
-    C:\dev\ClaudeElevatedHelper are left in place.
-
-.PARAMETER WhatIf
-    Print what would happen without changing anything.
-
-.EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\Uninstall-Autonomy.ps1
+    Leaves general-purpose tools installed. No newest-backup guessing. WhatIf makes no writes.
+    RemoveHelper unregisters the helper task; Program Files and ProgramData files remain.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param(
-    [switch]$RemoveHelper
-)
+param([switch]$RemoveHelper)
+$ErrorActionPreference = 'Stop'
+function Remove-IfMatchesStage {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$Live, [string]$Staged)
+    if (-not (Test-Path -LiteralPath $Live)) { return }
+    if ((Test-Path -LiteralPath $Staged) -and (Get-FileHash -LiteralPath $Live).Hash -eq (Get-FileHash -LiteralPath $Staged).Hash) {
+        if ($PSCmdlet.ShouldProcess($Live,'Remove unchanged kit-created file')) { [IO.File]::Delete($Live) }
+    } else { Write-Host "Kept modified live file: $Live" }
+}
 
-$ErrorActionPreference = "Stop"
-$cl = "$env:USERPROFILE\.claude"
-
-function Restore-LatestBak($path) {
-    # Only consider backups in the kit's format: <name>.bak-YYYYMMDD-HHmmss
-    # (matches what Setup-Autonomy.ps1's Install-LiveOrLeave writes). This avoids
-    # restoring unrelated backups other tools may have dropped alongside.
-    $dir  = Split-Path -Parent $path
-    $name = Split-Path -Leaf   $path
-    $rx   = "^" + [regex]::Escape($name) + "\.bak-\d{8}-\d{6}$"
-    $bak  = Get-ChildItem -LiteralPath $dir -Filter "$name.bak-*" -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match $rx } |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($bak) {
-        if ($PSCmdlet.ShouldProcess($path, "restore from $($bak.Name)")) {
-            Copy-Item -LiteralPath $bak.FullName -Destination $path -Force
-            Write-Host "restored $path  <-  $($bak.Name)"
-        }
+function Restore-PreKitFile {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$Path, [string]$Staged)
+    if (Test-Path -LiteralPath "$Path.pre-autonomy-kit") {
+        if ($PSCmdlet.ShouldProcess($Path,'Restore first pre-kit snapshot')) { Copy-Item -LiteralPath "$Path.pre-autonomy-kit" -Destination $Path -Force }
         return $true
     }
-    # Surface any non-kit backups so the user knows they exist but were skipped.
-    $other = Get-ChildItem -LiteralPath $dir -Filter "$name.bak-*" -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notmatch $rx } | Select-Object -ExpandProperty Name
-    if ($other) {
-        Write-Host "no kit-format backup for $name; ignored non-kit backups: $($other -join ', ')"
+    if (Test-Path -LiteralPath "$Path.pre-autonomy-kit.absent") {
+        Remove-IfMatchesStage -Live $Path -Staged $Staged -WhatIf:$WhatIfPreference
+        return $true
     }
     return $false
 }
 
-# 1. Approve watcher
-$w = Get-ScheduledTask -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
-if ($w) {
-    if ($PSCmdlet.ShouldProcess("ClaudeApproveWatcher", "Unregister-ScheduledTask")) {
-        Stop-ScheduledTask  -TaskName "ClaudeApproveWatcher" -ErrorAction SilentlyContinue
-        Unregister-ScheduledTask -TaskName "ClaudeApproveWatcher" -Confirm:$false
-        Write-Host "removed scheduled task: ClaudeApproveWatcher"
+function Remove-KitSettings {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $settings = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -ErrorAction Stop
+    if ($settings.permissions.defaultMode -eq 'bypassPermissions') { $settings.permissions.PSObject.Properties.Remove('defaultMode') }
+    if ($settings.hooks -and $settings.hooks.PSObject.Properties.Name -contains 'Stop') {
+        $stop = @()
+        foreach ($entry in @($settings.hooks.Stop)) {
+            $kept = @($entry.hooks | Where-Object { [string]$_.command -notlike '*notify-turn-ended*' })
+            if ($kept.Count) { $entry | Add-Member hooks $kept -Force; $stop += $entry }
+        }
+        $settings.hooks | Add-Member Stop $stop -Force
     }
-} else {
-    Write-Host "ClaudeApproveWatcher not present - skip"
+    if ($PSCmdlet.ShouldProcess($Path,'Strip only kit defaultMode and notify Stop hook; ignore timestamped backups')) {
+        [IO.File]::WriteAllText($Path,($settings | ConvertTo-Json -Depth 30),[Text.UTF8Encoding]::new($false))
+    }
 }
 
-# 2. Elevated helper (only on request)
-if ($RemoveHelper) {
-    $h = Get-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -ErrorAction SilentlyContinue
-    if ($h) {
-        if ($PSCmdlet.ShouldProcess("ClaudeElevatedDevHelper", "Unregister-ScheduledTask")) {
-            Unregister-ScheduledTask -TaskName "ClaudeElevatedDevHelper" -Confirm:$false
-            Write-Host "removed scheduled task: ClaudeElevatedDevHelper (files under C:\dev\ClaudeElevatedHelper left in place)"
+function Uninstall-KitConfiguration {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$ClaudeRoot)
+    $stage = Join-Path $ClaudeRoot 'autonomy-kit'
+    $settings = Join-Path $ClaudeRoot 'settings.json'
+    if (-not (Restore-PreKitFile -Path $settings -Staged (Join-Path $stage 'settings.created-by-kit.json') -WhatIf:$WhatIfPreference)) {
+        Remove-KitSettings -Path $settings -WhatIf:$WhatIfPreference
+    }
+    foreach ($pair in @(@('CLAUDE.md','CLAUDE-Cowork-Core.md'),@('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),@('hooks\notify-turn-ended.ps1','notify-turn-ended.ps1'))) {
+        $live = Join-Path $ClaudeRoot $pair[0]; $staged = Join-Path $stage $pair[1]
+        if (-not (Restore-PreKitFile -Path $live -Staged $staged -WhatIf:$WhatIfPreference)) {
+            Remove-IfMatchesStage -Live $live -Staged $staged -WhatIf:$WhatIfPreference
         }
     }
-}
-
-# 3. settings.json
-$sp = Join-Path $cl "settings.json"
-if (Test-Path -LiteralPath $sp) {
-    if (-not (Restore-LatestBak $sp)) {
-        try {
-            $s = Get-Content -LiteralPath $sp -Raw | ConvertFrom-Json
-            if ($s.permissions -and $s.permissions.defaultMode -eq 'bypassPermissions') {
-                if ($PSCmdlet.ShouldProcess($sp, "drop defaultMode=bypassPermissions")) {
-                    $s.permissions.PSObject.Properties.Remove('defaultMode')
-                }
-            }
-            if ($s.hooks -and $s.hooks.PSObject.Properties.Name -contains 'Stop') {
-                $kept = @()
-                foreach ($e in @($s.hooks.Stop)) {
-                    $isNotify = $false
-                    foreach ($h in @($e.hooks)) {
-                        if ("$($h.command)" -like "*notify-turn-ended*") { $isNotify = $true }
-                    }
-                    if (-not $isNotify) { $kept += $e }
-                }
-                if ($PSCmdlet.ShouldProcess($sp, "drop notify-turn-ended Stop hook")) {
-                    $s.hooks | Add-Member Stop $kept -Force
-                }
-            }
-            ($s | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $sp -Encoding UTF8
-            Write-Host "stripped kit-added entries from settings.json (no .bak found to restore)"
-        } catch {
-            Write-Warning "could not parse $sp - left as-is"
-        }
+    if ((Test-Path -LiteralPath $stage) -and $PSCmdlet.ShouldProcess($stage,'Remove kit staging directory')) {
+        $expected = [IO.Path]::GetFullPath((Join-Path $ClaudeRoot 'autonomy-kit'))
+        if ([IO.Path]::GetFullPath($stage) -ne $expected) { throw 'Unexpected cleanup target' }
+        [IO.Directory]::Delete($expected,$true)
     }
 }
 
-# 4. CLAUDE.md: prefer restoring user's .bak; else remove only if it matches the staged kit copy.
-$claudeMd = Join-Path $cl "CLAUDE.md"
-$stage    = Join-Path $cl "autonomy-kit"
-if (Test-Path -LiteralPath $claudeMd) {
-    if (-not (Restore-LatestBak $claudeMd)) {
-        $stageFile = Join-Path $stage 'CLAUDE-Cowork-Core.md'
-        $matches = (Test-Path -LiteralPath $stageFile) -and `
-            ((Get-FileHash $claudeMd -Algorithm SHA1).Hash -eq (Get-FileHash $stageFile -Algorithm SHA1).Hash)
-        if ($matches) {
-            if ($PSCmdlet.ShouldProcess($claudeMd, "remove (matches staged)")) {
-                Remove-Item -LiteralPath $claudeMd -Force
-                Write-Host "removed $claudeMd"
-            }
-        } else {
-            Write-Host "kept $claudeMd (differs from staged; user-customized)"
-        }
+foreach ($taskName in @('ClaudeApproveWatcher','ClaudeElevatedDevHelper')) {
+    if ($taskName -eq 'ClaudeElevatedDevHelper' -and -not $RemoveHelper) { continue }
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($task -and $PSCmdlet.ShouldProcess($taskName,'Stop and unregister scheduled task')) {
+        Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
     }
 }
-
-# 5. Depth profile + notify hook (live copies; remove only if they match the staged kit copy
-#    so we don't clobber user customizations made after install).
-function Remove-IfMatchesStage($live, $stageName) {
-    if (-not (Test-Path -LiteralPath $live)) { return }
-    $stageFile = Join-Path $stage $stageName
-    $matches = $false
-    if (Test-Path -LiteralPath $stageFile) {
-        $matches = ((Get-FileHash $live -Algorithm SHA1).Hash -eq (Get-FileHash $stageFile -Algorithm SHA1).Hash)
-    }
-    if ($matches) {
-        if ($PSCmdlet.ShouldProcess($live, "remove (matches staged)")) {
-            Remove-Item -LiteralPath $live -Force
-            Write-Host "removed $live"
-        }
-    } else {
-        Write-Host "kept $live (differs from staged or no staged copy; user-customized)"
-    }
-}
-Remove-IfMatchesStage (Join-Path $cl "CLAUDE-Cowork-Autonomous-Software-Development.md") 'CLAUDE-Cowork-Autonomous-Software-Development.md'
-Remove-IfMatchesStage (Join-Path $cl "hooks\notify-turn-ended.ps1")                       'notify-turn-ended.ps1'
-
-# 6. Staging dir (kit-owned; always safe to remove)
-if (Test-Path -LiteralPath $stage) {
-    if ($PSCmdlet.ShouldProcess($stage, "remove staging dir")) {
-        Remove-Item -LiteralPath $stage -Recurse -Force
-        Write-Host "removed $stage"
-    }
-}
-
-Write-Host "`nDONE. Toolchain (python/scoop/node/gh/rg/jq/sqlite/uv/playwright) left alone."
-Write-Host "Restart Cowork/Claude Code for settings changes to take effect."
+Uninstall-KitConfiguration -ClaudeRoot (Join-Path $env:USERPROFILE '.claude') -WhatIf:$WhatIfPreference
+Write-Host 'Toolchain left installed. Fully quit Claude from the system tray and reopen for settings changes.'

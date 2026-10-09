@@ -1,5 +1,5 @@
 # Optional desktop notification when a Claude Code turn ends.
-# Parity with the Codex `notify ... turn-ended` hook. Wire it up via hooks.example.json.
+# Desktop notification after Claude Code finishes a turn.
 param([string]$Message = "Claude Code: turn ended")
 
 try {

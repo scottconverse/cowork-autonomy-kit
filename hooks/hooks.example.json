@@ -1,16 +1,15 @@
 {
-  "//": "OPTIONAL desktop-notification parity with Codex's `notify ... turn-ended` hook.",
-  "//1": "EASIEST: run Setup-Autonomy.ps1 — it wires this hook for you with the correct absolute path, no editing needed. To wire it BY HAND instead, copy notify-turn-ended.ps1 into your ~/.claude/hooks/ and REPLACE <YOUR-HOME> below with your home directory (the value of $env:USERPROFILE, e.g. C:\\Users\\<account>). Claude Code -File paths must be absolute; this example ships a PLACEHOLDER, not a real path, so it stays portable and machine-agnostic.",
+  "//": "Optional Claude Code desktop notification hook.",
+  "//1": "EASIEST: run Setup-Autonomy.ps1  -  it wires this hook for you with the correct absolute path, no editing needed. To wire it BY HAND instead, copy notify-turn-ended.ps1 into your ~/.claude/hooks/ and REPLACE <YOUR-HOME> below with your home directory (the value of $env:USERPROFILE, e.g. C:\\Users\\<account>). Claude Code -File paths must be absolute; this example ships a PLACEHOLDER, not a real path, so it stays portable and machine-agnostic.",
   "//2": "The Stop hook fires when Claude finishes responding. Remove this block if you don't want notifications.",
-
   "hooks": {
     "Stop": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<YOUR-HOME>\\.claude\\hooks\\notify-turn-ended.ps1\""
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"<YOUR-HOME>\\.claude\\hooks\\notify-turn-ended.ps1\"",
+            "shell": "powershell"
           }
         ]
       }
