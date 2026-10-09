@@ -69,7 +69,7 @@ try {
     Assert ($disclosure.Contains($InstallRoot) -and $disclosure.Contains($installLog)) 'retained files and log location disclosed'
 
     . (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
-    Import-ProductionFunctions $installer @('New-HelperAcl','Set-VerifiedHelperAcl')
+    Import-ProductionFunctions $installer @('New-HelperAcl','Set-VerifiedHelperAcl','Initialize-DevelopmentRoot')
     $testSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $queueAcl=New-HelperAcl -UserSid $testSid -Kind Queue
     $readAcl=New-HelperAcl -UserSid $testSid -Kind ReadFile
@@ -87,6 +87,12 @@ try {
     Assert ($null -ne $script:writtenAcl) 'production ACL write/readback succeeds for matching ACL'
     function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind ReadDirectory }
     Expect-Failure { Set-VerifiedHelperAcl -Path 'test' -UserSid $testSid -Kind Queue } 'ACL verification failed'
+    function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind Code }
+    $readOnlyWarnings = @(Initialize-DevelopmentRoot -Path $sandbox -UserSid $testSid 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+    Assert ($readOnlyWarnings.Count -eq 0) 'read-only Users grant is not mistaken for write access'
+    function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid 'S-1-5-11' -Kind Queue }
+    $broadWarnings = @(Initialize-DevelopmentRoot -Path $sandbox -UserSid $testSid 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
+    Assert ($broadWarnings.Count -eq 1 -and $broadWarnings[0].Message.Contains('S-1-5-11')) 'broad development-root writer is warned about without changing ACL'
     Import-ProductionFunctions (Join-Path $kit 'elevated-dev-helper\ClaudeElevatedDevHelper.ps1') @('Write-JsonLog','Complete-QueueFile','Invoke-HelperQueue','Assert-TrustedPath')
     $drain=Join-Path $sandbox 'drain'
     foreach ($dir in @('queue','done','failed','logs')) { New-Item -ItemType Directory -Path (Join-Path $drain $dir) -Force | Out-Null }

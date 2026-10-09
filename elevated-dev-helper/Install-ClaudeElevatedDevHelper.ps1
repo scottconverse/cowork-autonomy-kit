@@ -110,7 +110,7 @@ function Initialize-DevelopmentRoot {
         Write-Host "Created ${Path}: write access limited to Administrators, SYSTEM and installing user"
     } else {
         $allowed = @('S-1-5-32-544','S-1-5-18',$UserSid)
-        $writeMask = [Security.AccessControl.FileSystemRights]'Write,Modify,FullControl,Delete,ChangePermissions,TakeOwnership'
+        $writeMask = [Security.AccessControl.FileSystemRights]'Write,Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership'
         foreach ($rule in (Get-Acl -LiteralPath $Path).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
             if ($rule.AccessControlType -eq 'Allow' -and ($rule.FileSystemRights -band $writeMask) -and $allowed -notcontains $rule.IdentityReference.Value) {
                 Write-Warning "Existing $Path permits writes by $($rule.IdentityReference.Value): $($rule.FileSystemRights). ACL left unchanged."
