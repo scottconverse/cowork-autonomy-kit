@@ -13,7 +13,7 @@
       2. uv            (astral.sh installer)
       3. scoop         (the no-admin package-manager keystone)
       4. node-lts, gh, ripgrep, jq, sqlite   (via scoop)
-      5. Playwright + browsers                (via pip)
+      5. Playwright + chromium browser        (via pip)
       6. Cowork config / staging:
          - Always refreshes a staging copy of the kit's files under ~/.claude/autonomy-kit/.
          - Live files (CLAUDE.md, depth profile, notify hook) are written ONLY on first
@@ -34,7 +34,7 @@
     Install the toolchain only; leave ~/.claude/CLAUDE.md and settings.json untouched.
 
 .PARAMETER SkipBrowsers
-    Install the Playwright package but skip the (large) browser download.
+    Install the Playwright package but skip the chromium browser download.
 
 .PARAMETER SkipHelper
     Skip the elevated-dev-helper UAC installer (step 8).
@@ -63,15 +63,22 @@ function Prepend-UserPath($dir) {
     if (($env:Path -split ';') -notcontains $dir) { $env:Path = "$dir;$env:Path" }
 }
 
+# Pick the newest user-scope Python by version number. A text sort of folder names
+# puts Python39 before Python313. Only plain PythonNNN folders count (no -32, no t builds).
+function Find-UserPython {
+    Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Directory.Name -match '^Python3\d+$' } |
+        Sort-Object { [int]($_.Directory.Name.Substring(7)) } -Descending |
+        Select-Object -First 1
+}
+
 # ---------------------------------------------------------------- 1. Python + python3 shim
 Step "Python (user-scope) + python3 shim"
-$pyExe = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue |
-    Sort-Object FullName -Descending | Select-Object -First 1
+$pyExe = Find-UserPython
 if (-not $pyExe) {
     winget install -e --id Python.Python.3.12 --scope user `
         --accept-package-agreements --accept-source-agreements --disable-interactivity
-    $pyExe = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending | Select-Object -First 1
+    $pyExe = Find-UserPython
 }
 if ($pyExe) {
     $pydir = $pyExe.Directory.FullName
@@ -137,15 +144,40 @@ $py3cmd = (Get-Command python3 -ErrorAction SilentlyContinue).Source
 if (-not $py3cmd -and $pyExe) { $py3cmd = Join-Path $pyExe.Directory.FullName "python3.exe" }
 if ($py3cmd) {
     # Idempotent: only install if absent; do NOT auto-upgrade on every Setup re-run.
-    $pwInstalled = & $py3cmd -m pip show playwright 2>$null
-    if (-not $pwInstalled) {
+    #
+    # Do NOT redirect stderr of a native command here (2>$null, 2>&1, *>$null). In Windows
+    # PowerShell 5.1 (what Install.cmd runs), a stderr redirect turns each stderr line into an
+    # error record, and $ErrorActionPreference=Stop then aborts Setup. The old check,
+    # `pip show playwright 2>$null`, wrote "Package(s) not found" to stderr on a clean box,
+    # so Setup died before it installed Playwright. find_spec writes nothing to stderr;
+    # we read only the exit code.
+    $pwProbe = "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('playwright') else 1)"
+    & $py3cmd -c $pwProbe
+    if ($LASTEXITCODE -ne 0) {
         & $py3cmd -m pip install --quiet playwright
-        Write-Host "playwright: installed"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "pip install playwright FAILED (exit $LASTEXITCODE). Re-run Setup or run: python3 -m pip install playwright"
+        } else {
+            Write-Host "playwright: installed"
+        }
     } else {
         Write-Host "playwright already present - skip pip install"
     }
-    if (-not $SkipBrowsers) { & $py3cmd -m playwright install }
-    Write-Host "playwright: $(& $py3cmd -m playwright --version 2>&1)"
+    & $py3cmd -c $pwProbe
+    if ($LASTEXITCODE -eq 0) {
+        if (-not $SkipBrowsers) {
+            & $py3cmd -m playwright install chromium
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "playwright install chromium FAILED (exit $LASTEXITCODE). Re-run: python3 -m playwright install chromium"
+            } else {
+                Write-Host "playwright: chromium installed"
+            }
+        }
+        $pwVer = & $py3cmd -m playwright --version
+        Write-Host "playwright: $pwVer"
+    }
+} else {
+    Write-Warning "python3 not found - Playwright step skipped. Install Python and re-run Setup."
 }
 
 # ------------------------------------------------------------------------------- 6. config
@@ -270,7 +302,7 @@ if (-not $SkipHelper) {
 # -------------------------------------------------------------------------------- summary
 Step "Summary"
 $report = [ordered]@{}
-foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','sqlite3') {
+foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','sqlite3','playwright') {
     $src = (Get-Command $t -ErrorAction SilentlyContinue).Source
     $report[$t] = if ($src) { 'OK' } else { 'missing (open a new shell)' }
 }

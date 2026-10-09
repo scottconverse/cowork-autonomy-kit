@@ -118,7 +118,7 @@ Setup proceeds through Python and a `python3.exe` copy, uv, Scoop, CLI tools, Pl
 | Switch | Actual effect | What it does not skip |
 |---|---|---|
 | `-SkipConfig` | Skips instruction staging, live instruction/hook-file creation, and settings merge | Tool installs, watcher installation/start, helper step |
-| `-SkipBrowsers` | Skips the Playwright browser download | Playwright package installation, other steps |
+| `-SkipBrowsers` | Skips the Playwright chromium browser download (Setup installs chromium only) | Playwright package installation, other steps |
 | `-SkipHelper` | Skips the elevated-helper installation step | Configuration, watcher, toolchain |
 
 These switches can be combined, but **`-SkipConfig` is not a toolchain-only safety boundary** despite the script's parameter summary. Use separately reviewed individual components if you do not want the watcher. There is no full-Setup preview mode or transaction rollback.
