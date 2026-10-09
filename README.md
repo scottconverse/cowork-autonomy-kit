@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit
 
-Version 1.6.0 - Windows - Independent community project, not affiliated with Anthropic.
+Version 1.6.1 - Windows - Independent community project, not affiliated with Anthropic.
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -8,7 +8,7 @@ The Cowork tab is not in scope. Cowork has its own permission modes and runs com
 
 The repository and CLAUDE-Cowork-*.md filenames are historical and remain stable for existing installs.
 
-[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.6.0) | [Changelog](CHANGELOG.md)
+[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.6.1) | [Changelog](CHANGELOG.md)
 
 ## What it does
 
@@ -34,6 +34,8 @@ Fully quit Claude (right-click the Claude icon in the system tray, Quit), then o
 
 Run Uninstall first to remove a legacy watcher task and restore the recorded pre-kit configuration. Rerun the helper installer to migrate its paths, then Setup. Check pending jobs in the old helper directory before deleting it. For a customized live CLAUDE.md, add `@CLAUDE-Cowork-Autonomous-Software-Development.md` on its own line if Doctor reports the import missing.
 
+This patch release includes the Claude-specific audit fixes. Setup now updates unchanged kit-owned profiles, preserves customized profiles, and repairs stale or unverified helper installations while retaining recorded custom paths. Missing required tools or failed browser installation produce a failing Setup exit code.
+
 ## Documentation and verification
 
 - [Developer manual](docs/DEVELOPER-MANUAL.md)
@@ -42,7 +44,9 @@ Run Uninstall first to remove a legacy watcher task and restore the recorded pre
 - [Test plan](tests/TEST-PLAN.md)
 - [Website development](site/README.md)
 
-Isolated Windows PowerShell 5.1 lifecycle and regression tests cover the real installer functions. No clean-machine installation or live desktop-app test was performed for this release. See release notes for exact evidence.
+Isolated Windows PowerShell 5.1 lifecycle and regression tests cover the real installer functions. A clean-machine installation remains unverified. See release notes for exact evidence.
+
+Verification on an existing Windows installation passed file create/read/delete in a fresh desktop Code session and a real elevated helper CheckAdmin job. Additional audit regressions cover arguments, upgrades, malformed settings, diagnostics, rollback and result publication. A clean-machine installation remains unverified.
 
 ## License
 

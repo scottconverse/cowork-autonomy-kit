@@ -1,6 +1,6 @@
 # Claude Code Windows setup
 
-Version 1.6.0 - Windows
+Version 1.6.1 - Windows
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -16,7 +16,7 @@ The repo name and CLAUDE-Cowork-*.md names are historical. They remain unchanged
 4. Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles.
 5. Run `Doctor-Autonomy.ps1` and check the live profile import, tools, settings and helper state.
 
-Setup installs Python, uv, Scoop, Node, gh, ripgrep, jq, SQLite, Playwright + chromium browser. It snapshots the original settings.json and CLAUDE.md once, keeps timestamped backups, stages kit reference files, preserves existing live instruction files, and merges the notification hook. A malformed settings.json stops configuration before any files are written.
+Setup installs Python, uv, Scoop, Node, gh, ripgrep, jq, SQLite, Playwright + chromium browser. It snapshots the original settings.json and CLAUDE.md once, keeps timestamped backups, stages kit reference files, and merges the notification hook. Unchanged kit-owned instruction files update automatically; customized files remain intact. Malformed JSON or invalid permission/hook shapes stop configuration before configuration files are written. Missing required tools or failed browser installation cause a failing Setup exit code.
 
 ## Settings and instructions
 
@@ -28,7 +28,7 @@ The live Core imports the depth profile with a real standalone line:
 @CLAUDE-Cowork-Autonomous-Software-Development.md
 ```
 
-Both files are installed beside each other under ~/.claude. The full profile loads every session and consumes context. Existing live CLAUDE.md is not overwritten; add that line yourself if Doctor reports it missing.
+Both files are installed beside each other under ~/.claude. The full profile loads every session and consumes context. Customized live CLAUDE.md is preserved; add that line yourself if Doctor reports it missing. A live file matching the previous staged kit copy updates automatically.
 
 ## Which shell runs commands
 
@@ -40,7 +40,7 @@ A folder still prompts after Setup: in the Code tab, open the mode selector next
 
 ## Helper and migration
 
-The helper serves normal, non-elevated Claude Code sessions in the Code tab and CLI. Programs are installed under `%ProgramFiles%\ClaudeElevatedHelper`; queue, results, logs and install-state.json are under `%ProgramData%\ClaudeElevatedHelper`. Read state for the actual paths. See [helper documentation](../elevated-dev-helper/README.md).
+The helper serves normal, non-elevated Claude Code sessions in the Code tab and CLI. Programs default to `%ProgramFiles%\ClaudeElevatedHelper`; data defaults to `%ProgramData%\ClaudeElevatedHelper`. Discovery state always lives at `%ProgramData%\ClaudeElevatedHelper\install-state.json`, including with a custom data root. Setup checks installed files, task arguments, scheduling and verified state before skipping installation; repairs retain recorded custom paths. See [helper documentation](../elevated-dev-helper/README.md).
 
 For older installs, run Uninstall first to remove the legacy watcher. Run the helper installer directly to re-register the task with the new paths, then Setup. The old C:\dev\ClaudeElevatedHelper directory is retained; check pending jobs before deleting it.
 
@@ -50,8 +50,8 @@ See the full profile's computer-use section for the single operating rule. The k
 
 ## Rollback and verification
 
-Uninstall restores the first pre-kit snapshots. If a file was originally absent it is removed only when still equal to the installed staged copy. Legacy settings without snapshots have only the kit defaultMode and notify hook stripped; timestamped backups are never selected as a substitute for the true baseline. `-WhatIf` makes no writes. General-purpose tools remain installed.
+Uninstall restores the first pre-kit snapshots and first saves current files to unique `.before-uninstall-*.bak` backups so later owner edits remain recoverable. If a file was originally absent it is removed only when still equal to the installed staged copy. Legacy settings without snapshots have only the kit defaultMode and notify hook stripped; timestamped backups are never selected as a substitute for the true baseline. `-WhatIf` makes no writes. General-purpose tools remain installed.
 
-Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. No clean-machine run or live desktop-app test was performed. See [test plan](../tests/TEST-PLAN.md).
+Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. Verification passed a fresh desktop Code session and real helper CheckAdmin on an existing Windows installation. No clean-machine run was performed. See [test plan](../tests/TEST-PLAN.md).
 
 Official references: [desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [settings](https://code.claude.com/docs/en/settings-reference).

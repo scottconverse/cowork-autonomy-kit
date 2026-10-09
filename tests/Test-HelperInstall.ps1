@@ -69,7 +69,7 @@ try {
     Assert ($disclosure.Contains($InstallRoot) -and $disclosure.Contains($installLog)) 'retained files and log location disclosed'
 
     . (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
-    Import-ProductionFunctions $installer @('New-HelperAcl','Set-VerifiedHelperAcl','Initialize-DevelopmentRoot')
+    Import-ProductionFunctions $installer @('New-HelperAcl','Test-HelperAclEquivalent','Set-VerifiedHelperAcl','Initialize-DevelopmentRoot')
     $testSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $queueAcl=New-HelperAcl -UserSid $testSid -Kind Queue
     $readAcl=New-HelperAcl -UserSid $testSid -Kind ReadFile
@@ -85,6 +85,14 @@ try {
     function Get-Acl { param($LiteralPath,$ErrorAction) $script:writtenAcl }
     Set-VerifiedHelperAcl -Path 'test' -UserSid $testSid -Kind Queue
     Assert ($null -ne $script:writtenAcl) 'production ACL write/readback succeeds for matching ACL'
+    $roundtrip = New-Object Security.AccessControl.DirectorySecurity
+    $roundtrip.SetSecurityDescriptorSddlForm('O:BAD:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)')
+    Assert (Test-HelperAclEquivalent $roundtrip $codeAcl) 'Windows ACE ordering and auto-inheritance bookkeeping accepted'
+    $roundtrip.SetOwner([Security.Principal.SecurityIdentifier]::new($testSid))
+    Assert (-not (Test-HelperAclEquivalent $roundtrip $codeAcl)) 'unexpected owner rejected'
+    $roundtrip.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+    $roundtrip.SetAccessRuleProtection($false,$true)
+    Assert (-not (Test-HelperAclEquivalent $roundtrip $codeAcl)) 'unprotected inheritance rejected'
     function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind ReadDirectory }
     Expect-Failure { Set-VerifiedHelperAcl -Path 'test' -UserSid $testSid -Kind Queue } 'ACL verification failed'
     function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid $testSid -Kind Code }
@@ -93,7 +101,7 @@ try {
     function Get-Acl { param($LiteralPath,$ErrorAction) New-HelperAcl -UserSid 'S-1-5-11' -Kind Queue }
     $broadWarnings = @(Initialize-DevelopmentRoot -Path $sandbox -UserSid $testSid 3>&1 | Where-Object { $_ -is [Management.Automation.WarningRecord] })
     Assert ($broadWarnings.Count -eq 1 -and $broadWarnings[0].Message.Contains('S-1-5-11')) 'broad development-root writer is warned about without changing ACL'
-    Import-ProductionFunctions (Join-Path $kit 'elevated-dev-helper\ClaudeElevatedDevHelper.ps1') @('Write-JsonLog','Complete-QueueFile','Invoke-HelperQueue','Assert-TrustedPath')
+    Import-ProductionFunctions (Join-Path $kit 'elevated-dev-helper\ClaudeElevatedDevHelper.ps1') @('Write-JsonLog','Write-HelperResult','Complete-QueueFile','Invoke-HelperQueue','Assert-TrustedPath')
     $drain=Join-Path $sandbox 'drain'
     foreach ($dir in @('queue','done','failed','logs')) { New-Item -ItemType Directory -Path (Join-Path $drain $dir) -Force | Out-Null }
     [IO.File]::WriteAllText((Join-Path $drain 'queue\first.json'),'{{"action":"CheckAdmin"}}'.Replace('{{','{').Replace('}}','}'))

@@ -21,7 +21,12 @@ function Restore-PreKitFile {
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$Path, [string]$Staged)
     if (Test-Path -LiteralPath "$Path.pre-autonomy-kit") {
-        if ($PSCmdlet.ShouldProcess($Path,'Restore first pre-kit snapshot')) { Copy-Item -LiteralPath "$Path.pre-autonomy-kit" -Destination $Path -Force }
+        if ($PSCmdlet.ShouldProcess($Path,'Back up current file and restore first pre-kit snapshot')) {
+            if (Test-Path -LiteralPath $Path) {
+                Copy-Item -LiteralPath $Path -Destination "$Path.before-uninstall-$([guid]::NewGuid().ToString('n')).bak"
+            }
+            Copy-Item -LiteralPath "$Path.pre-autonomy-kit" -Destination $Path -Force
+        }
         return $true
     }
     if (Test-Path -LiteralPath "$Path.pre-autonomy-kit.absent") {
@@ -71,8 +76,20 @@ function Uninstall-KitConfiguration {
     }
 }
 
-foreach ($taskName in @('ClaudeApproveWatcher','ClaudeElevatedDevHelper')) {
-    if ($taskName -eq 'ClaudeElevatedDevHelper' -and -not $RemoveHelper) { continue }
+function Get-KitRemovalTaskNames {
+    param([string]$StatePath, [switch]$RemoveHelper)
+    'ClaudeApproveWatcher'
+    if ($RemoveHelper) {
+        $name = 'ClaudeElevatedDevHelper'
+        if (Test-Path -LiteralPath $StatePath) {
+            $state = Get-Content -LiteralPath $StatePath -Raw | ConvertFrom-Json -ErrorAction Stop
+            if ($state.task_name) { $name = [string]$state.task_name }
+        }
+        $name
+    }
+}
+
+foreach ($taskName in @(Get-KitRemovalTaskNames -StatePath (Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json') -RemoveHelper:$RemoveHelper)) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and $PSCmdlet.ShouldProcess($taskName,'Stop and unregister scheduled task')) {
         Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue

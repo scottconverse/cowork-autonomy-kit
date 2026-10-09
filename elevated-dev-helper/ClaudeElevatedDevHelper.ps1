@@ -49,6 +49,15 @@ function Assert-TrustedPath {
     throw "Path is not under a trusted development root: $Path"
 }
 
+function ConvertTo-WindowsArgument {
+    param([AllowEmptyString()][string]$Argument)
+    # CommandLineToArgvW/CRT rules: escape embedded quotes and double backslashes
+    # immediately before a quote, including the closing quote. Preserve empty args.
+    $escaped = [regex]::Replace($Argument, '(\\*)"', '$1$1\"')
+    $escaped = [regex]::Replace($escaped, '(\\+)$', '$1$1')
+    return '"' + $escaped + '"'
+}
+
 function Invoke-LoggedProcess {
     param(
         [string]$FilePath,
@@ -65,9 +74,7 @@ function Invoke-LoggedProcess {
     # bounded wait for the async readers so a lingering grandchild can never wedge us.
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $FilePath
-    $psi.Arguments = (($Arguments | ForEach-Object {
-        if ($_ -match '\s') { '"' + $_ + '"' } else { [string]$_ }
-    }) -join ' ')
+    $psi.Arguments = (($Arguments | ForEach-Object { ConvertTo-WindowsArgument -Argument $_ }) -join ' ')
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
@@ -138,13 +145,20 @@ function Invoke-HelperAction {
             if (-not $Job.scriptPath) { throw "RunTrustedPowerShellScript requires scriptPath." }
             $script = Assert-TrustedPath -Path ([string]$Job.scriptPath)
             if (-not (Test-Path -LiteralPath $script)) { throw "Trusted script does not exist: $script" }
-            $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script)
-            if ($Job.arguments) {
+            $scriptArguments = @()
+            if ($Job.PSObject.Properties.Name -contains 'arguments') {
                 foreach ($arg in @($Job.arguments)) {
-                    $args += [string]$arg
+                    $scriptArguments += [string]$arg
                 }
             }
-            return Invoke-LoggedProcess -FilePath "powershell.exe" -Arguments $args -TimeoutSeconds 3600
+            # Windows PowerShell -File parses quotes differently from normal Windows
+            # executables. Carry script data in an encoded payload, then splat strings
+            # inside PowerShell so quotes and empty arguments remain data.
+            $payload = @{scriptPath=$script;arguments=$scriptArguments} | ConvertTo-Json -Depth 4 -Compress
+            $payload64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
+            $command = '$payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $payload64 + ''')) | ConvertFrom-Json; $scriptArguments = @($payload.arguments); & $payload.scriptPath @scriptArguments'
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+            return Invoke-LoggedProcess -FilePath "powershell.exe" -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-OutputFormat','Text','-EncodedCommand',$encoded) -TimeoutSeconds 3600
         }
 
         "StartService" {
@@ -196,6 +210,16 @@ function Invoke-HelperAction {
     }
 }
 
+function Write-HelperResult {
+    param([string]$Path, [hashtable]$Value)
+    # Readers must see either no result or a complete JSON document.
+    $temp = $Path + '.' + [guid]::NewGuid().ToString('n') + '.tmp'
+    try {
+        [IO.File]::WriteAllText($temp, ($Value | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temp, $Path)
+    } finally { if (Test-Path -LiteralPath $temp) { [IO.File]::Delete($temp) } }
+}
+
 function Complete-QueueFile {
     param([string]$Source,[string]$Destination)
     # A same-volume move retains queue ACLs. Create the archive under its read-only
@@ -219,23 +243,23 @@ foreach ($jobFile in $jobs) {
         Write-JsonLog -LogPath $logPath -Record @{ event = "job_start"; job_id = $jobId; action = $job.action }
         $result = Invoke-HelperAction -Job $job
         $resultPath = Join-Path $done ($jobId + ".result.json")
-        @{
+        Write-HelperResult -Path $resultPath -Value @{
             job_id = $jobId
             status = "ok"
             action = $job.action
             result = $result
             completed_at = (Get-Date).ToUniversalTime().ToString("o")
-        } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $resultPath -Encoding UTF8
+        }
         Complete-QueueFile -Source $jobFile.FullName -Destination (Join-Path $done $jobFile.Name)
         Write-JsonLog -LogPath $logPath -Record @{ event = "job_ok"; job_id = $jobId; action = $job.action }
     } catch {
         $resultPath = Join-Path $failed ($jobId + ".error.json")
-        @{
+        Write-HelperResult -Path $resultPath -Value @{
             job_id = $jobId
             status = "failed"
             error = $_.Exception.Message
             completed_at = (Get-Date).ToUniversalTime().ToString("o")
-        } | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $resultPath -Encoding UTF8
+        }
         Complete-QueueFile -Source $jobFile.FullName -Destination (Join-Path $failed $jobFile.Name)
         Write-JsonLog -LogPath $logPath -Record @{ event = "job_failed"; job_id = $jobId; error = $_.Exception.Message }
     }
