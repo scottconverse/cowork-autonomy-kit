@@ -24,6 +24,11 @@ foreach ($t in 'python3','pip','uv','scoop','node','npm','npx','gh','rg','jq','s
     $src = (Get-Command $t -ErrorAction SilentlyContinue).Source
     L $t  $(if ($src) { $src } else { '(missing)' })
 }
+# Playwright browsers live outside PATH. Setup installs chromium only.
+$pwBrowsers = Join-Path $env:LOCALAPPDATA "ms-playwright"
+$chromium = Get-ChildItem -Path $pwBrowsers -Directory -Filter 'chromium-*' -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending | Select-Object -First 1
+L 'playwright chromium' $(if ($chromium) { $chromium.FullName } else { '(missing; run: python3 -m playwright install chromium)' })
 
 Hdr "Config (~/.claude)"
 $claudeMd = Join-Path $cl "CLAUDE.md"

@@ -2,7 +2,7 @@
 
 For developers operating and maintaining Claude Code or Cowork on a personal Windows development machine.
 
-**Software reference:** v1.5.1 runtime scripts, with the subsequent landing-page source at commit `b6cd25406c94dd53e6484a8910d709f4d135107f`. **Manual date:** October 4, 2026. This manual is published with the repository documentation; it is not part of the previously published v1.5.1 ZIP.
+**Software reference:** v1.5.2 runtime scripts. **Manual date:** October 9, 2026. This manual is published with the repository documentation and is included in the v1.5.2 ZIP.
 
 The kit is a collection of PowerShell scripts, instruction profiles, configuration examples, and scheduled-task helpers. It is not a replacement for Claude, an administrator version of the desktop app, or a guarantee that an agent will follow every instruction. This manual explains what the implementation changes, how to operate the elevated job interface, and how to verify and recover your environment.
 
@@ -82,10 +82,10 @@ Back up the entire existing `.claude` configuration using your usual backup proc
 
 ### Acquire the code
 
-Use the [v1.5.1 release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.5.1) for a fixed runtime snapshot. Download its ZIP and `SHA256SUMS.txt`; calculate the ZIP hash and compare the complete value with the matching checksum entry:
+Use the [v1.5.2 release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.5.2) for a fixed runtime snapshot. Download its ZIP and `SHA256SUMS.txt`; calculate the ZIP hash and compare the complete value with the matching checksum entry:
 
 ```powershell
-Get-FileHash -LiteralPath .\cowork-autonomy-kit-1.5.1.zip -Algorithm SHA256
+Get-FileHash -LiteralPath .\cowork-autonomy-kit-1.5.2.zip -Algorithm SHA256
 Get-Content -LiteralPath .\SHA256SUMS.txt
 ```
 
@@ -96,7 +96,7 @@ Alternatively, clone and select the release tag:
 ```powershell
 git clone https://github.com/scottconverse/cowork-autonomy-kit.git
 cd cowork-autonomy-kit
-git checkout v1.5.1
+git checkout v1.5.2
 ```
 
 The `main` branch includes later website/documentation changes and can evolve independently of the tag. Commands below assume the current directory is the kit's repository or extracted root, not `docs/`.
@@ -118,7 +118,7 @@ Setup proceeds through Python and a `python3.exe` copy, uv, Scoop, CLI tools, Pl
 | Switch | Actual effect | What it does not skip |
 |---|---|---|
 | `-SkipConfig` | Skips instruction staging, live instruction/hook-file creation, and settings merge | Tool installs, watcher installation/start, helper step |
-| `-SkipBrowsers` | Skips the Playwright browser download | Playwright package installation, other steps |
+| `-SkipBrowsers` | Skips the Playwright chromium browser download (Setup installs chromium only) | Playwright package installation, other steps |
 | `-SkipHelper` | Skips the elevated-helper installation step | Configuration, watcher, toolchain |
 
 These switches can be combined, but **`-SkipConfig` is not a toolchain-only safety boundary** despite the script's parameter summary. Use separately reviewed individual components if you do not want the watcher. There is no full-Setup preview mode or transaction rollback.
@@ -387,7 +387,7 @@ Doctor is an inventory, not a repair command or proof of successful helper jobs.
 | Scoop reports already installed | Setup supports an existing Scoop command; if tooling still fails, inspect the resolved Scoop path and its own output |
 | New Core text has no effect | Compare live `CLAUDE.md` to staging; existing live content is intentionally preserved. Merge deliberately and restart the host |
 | Settings parse error | Preserve original and backups; fix malformed JSON before Setup, because its fallback can replace active settings |
-| Invoker not found | Install/update the helper directly from complete v1.5.1 sources; verify `invoker_script` and file existence |
+| Invoker not found | Install/update the helper directly from complete v1.5.2 sources; verify `invoker_script` and file existence |
 | Invalid JSON or unrecognized escape sequence | Stop hand-writing jobs; use the installed invoker. For existing failures, inspect the error and original job without blindly replaying it |
 | Path is not trusted | Check the worker user's profile and allowlisted roots. A custom install directory is not automatically allowlisted |
 | Job remains in queue | Check Running versus Ready state, overlapping submissions, login identity, registration, and logs. A task presence check alone is insufficient |

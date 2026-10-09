@@ -2,6 +2,28 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v1.5.2 - 2026-10-09
+
+### Fixed
+- **`Setup-Autonomy.ps1` step 5 no longer aborts Setup on a clean machine.** The
+  "is Playwright installed?" check ran `pip show playwright 2>$null`. Under Windows
+  PowerShell 5.1 (what `Install.cmd` runs) with `$ErrorActionPreference=Stop`, a stderr
+  redirect on a native command turns pip's "Package(s) not found" line into a terminating
+  error, so Setup stopped before it installed Playwright and skipped steps 6-8. The check
+  now uses `importlib.util.find_spec`, which writes nothing to stderr, and reads only the
+  exit code.
+- Step 5 now checks `$LASTEXITCODE` after `pip install` and `playwright install`, and
+  warns on failure instead of printing "installed" unconditionally.
+- Step 5 now warns when no `python3` is found instead of skipping silently.
+- Python discovery picks the newest `PythonNNN` folder by version number. The old text
+  sort picked `Python39` over `Python313`.
+
+### Changed
+- Setup installs the chromium browser only (`playwright install chromium`), not all
+  three browsers. Install the others on demand with `python3 -m playwright install`.
+- Setup summary and `Doctor-Autonomy.ps1` now report Playwright; Doctor also reports the
+  chromium browser install.
+
 ## v1.5.1 — 2026-10-04
 
 ### Fixed
