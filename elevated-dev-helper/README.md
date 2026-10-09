@@ -1,126 +1,36 @@
-# Claude Elevated Development Helper
+# Claude Code Windows elevated helper
 
-A reusable Windows helper pattern for machines where Claude Code / Cowork runs as a normal
-(non-admin) process and cannot launch its shell with an administrator token.
+Serves Claude Code sessions in the desktop Code tab and CLI running as a normal, non-elevated Windows user. This helper does not configure the Cowork tab.
 
-## Why inline elevation is impossible (read this first)
+## Installation and migration
 
-This helper exists because of a hard Windows constraint, not a setup gap. When Cowork is the
-host, **the Claude desktop app is a packaged MSIX app** (it lives under
-`C:\Program Files\WindowsApps\Claude_…`, confirmed via `Get-AppxPackage -Name *Claude*`).
-Windows **fundamentally prohibits packaged (MSIX/Store) apps from running elevated** — there
-is no "Run as administrator", no scheduled-task launcher, and no registry switch that gives a
-packaged app's in-process shell an administrator token. The one global override that could
-change integrity, disabling UAC (`EnableLUA=0`), **breaks packaged apps entirely** (they will
-not launch). So no skill, prompt, profile, or one-time setup can make the Cowork inline
-Bash/PowerShell shell elevated. **Do not promise "relaunch elevated" — it cannot work for a
-packaged-app host.**
+Run Install-ClaudeElevatedDevHelper-AsAdmin.cmd and approve UAC. The installer remains visible, propagates errors, and verifies administrator execution plus an installed-invoker script path containing spaces.
 
-The *only* path to a genuinely elevated inline Claude shell is the **non-packaged Claude Code
-CLI** (`%AppData%\Roaming\Claude\claude-code\…\claude.exe`) started from an elevated context —
-i.e. the terminal CLI, not the Cowork GUI. For owners who use Cowork exclusively, this
-scheduled-task helper is therefore the **correct and only** admin bridge.
+- Worker, invoker and path-test script: `%ProgramFiles%\ClaudeElevatedHelper\`, protected from non-admin writes.
+- Queue, done, failed, logs, install-state.json and install-log.txt: `%ProgramData%\ClaudeElevatedHelper\`.
+- Read install-state.json for data_root, install_root, invoker_script and task_name. Invoker defaults discover this state.
+- Administrators and SYSTEM have full control. The installing user has Modify on queue only and Read on results, logs and state. ACLs are explicitly written, read back and checked; mismatch fails installation.
+- A new C:\dev folder permits writes only by Administrators, SYSTEM and the installing user. An existing folder is inspected and broad write grants are warned about without changing its ACL.
 
-## What It Does
+The installer re-registers an old task against the new worker and data paths. An existing C:\dev\ClaudeElevatedHelper folder is retained; inspect pending jobs before deleting it. Custom roots must preserve the same protected-code and separate-data boundary.
 
-- Installs a Windows Scheduled Task named `ClaudeElevatedDevHelper`.
-- The task runs `ClaudeElevatedDevHelper.ps1` with highest privileges.
-- Claude (or any normal user process) queues structured JSON jobs and triggers the task.
-- The helper runs supported development actions and writes JSON results/logs.
-
-The helper is agent-agnostic — it does not call or depend on Claude. It is a bounded,
-file-queue-driven elevation bridge that Claude is *authorized* (in the profile) to drive when
-admin is genuinely needed. Unlike Codex, which can run an elevated in-process sandbox, Claude
-Code under the packaged Cowork host runs at a Medium-integrity user token that **cannot** be
-elevated in place (see "Why inline elevation is impossible" above) — so this helper is the
-primary path to admin actions.
-
-## What It Does Not Do
-
-Not an unrestricted admin command broker. It refuses arbitrary commands and supports named
-development actions only:
-
-- `CheckAdmin`
-- `WingetInstall`
-- `WingetUpgrade`
-- `RunTrustedPowerShellScript`
-- `StartService`
-- `StopService`
-- `RestartService`
-- `OpenDevFirewallPort`
-- `RegisterDevScheduledTask`
-
-## Install
-
-The one-time installer must be launched from an elevated PowerShell session because Windows
-UAC controls creation of highest-privilege scheduled tasks.
-
-For a click-driven install, double-click `Install-ClaudeElevatedDevHelper-AsAdmin.cmd` and
-approve the Windows UAC prompt. A successful install copies both the worker and invoker,
-records `invoker_script` in `install-state.json`, and verifies administrator execution
-and a script path containing spaces and backslashes through the installed invoker.
-Failure or timeout produces a nonzero installer exit; `installed` stays false.
-The failure warning names the retained scheduled task, helper folder, and installation
-log. These remain available for repair; verification failure does not unregister the task.
-
-For existing installs, rerun this helper installer directly. The main Setup script skips
-an existing helper task and preserves live `~/.claude/CLAUDE.md`; update that document
-from the revised Core instructions separately, retaining any personal changes.
-
-After installation, the helper root defaults to `C:\dev\ClaudeElevatedHelper`, with
-`queue/`, `done/`, `failed/`, and `logs/` subfolders plus `install-log.txt` and
-`install-state.json`.
-
-Use `Test-ElevationState.ps1` only to inspect the process where it is launched.
-
-## How Claude Uses It
+## Submit and verify
 
 ```powershell
-& 'C:\dev\ClaudeElevatedHelper\Invoke-ClaudeElevatedDevHelper.ps1' -Action WingetInstall -PackageId Git.Git
+$state = Get-Content (Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json') -Raw | ConvertFrom-Json
+& $state.invoker_script -Action CheckAdmin
 ```
 
-Claude then reads `C:\dev\ClaudeElevatedHelper\done\<job_id>.result.json` (or the matching
-`failed\` file) and continues. Non-admin work proceeds while the job runs.
+The invoker atomically publishes a complete JSON job and triggers the scheduled task. Read done\<job_id>.result.json or failed\<job_id>.error.json under data_root. Require status=ok and, for child processes, result.exit_code=0. A done file alone does not prove the process succeeded.
 
-Never hand-write job JSON: unescaped backslashes are invalid JSON. For custom installs,
-use the metadata's invoker path and pass `-Root <install_root> -TaskName <task_name>`.
-Require `status = "ok"` and, for process actions, `result.exit_code = 0`.
-A result in `done\` may contain a nonzero child exit code.
+## Supported actions and trust
 
-## Reuse On Other Machines
+CheckAdmin, WingetInstall, WingetUpgrade, RunTrustedPowerShellScript, StartService, StopService, RestartService, OpenDevFirewallPort and RegisterDevScheduledTask are supported. Trusted user-script roots are C:\dev\ and the task user's Documents\Claude\. The installed administrator-only path-test script is explicitly accepted for installer verification. The .claude and Temp directories are not trusted script roots. Lexical path validation is not a sandbox or a defense against user-controlled reparse points within a trusted root.
 
-Copy this folder, review the paths, then perform the same one-time elevated setup. The Claude
-addendum (`CLAUDE-Elevated-Helper-Addendum.md`) can be appended to that machine's
-`~/.claude/CLAUDE.md`.
+The task runs at highest privilege with MultipleInstances=IgnoreNew. Processing stays serial and drains new queue arrivals before exiting. A job arriving after the final empty-queue check and before task exit can miss its trigger; inspect state and trigger the task again if necessary. The kit does not claim that this last scheduling race is eliminated.
 
-## Process execution (hardened)
+## Accepted risk
 
-Every process-launching action (`WingetInstall`/`Upgrade`, `RunTrustedPowerShellScript`)
-goes through one runner. Three real bugs were found and fixed by driving the kit on a real
-machine — all in the scheduled task's Windows PowerShell 5.1 host:
+Code Claude writes under C:\dev\ can run as administrator without per-action UAC. The owner accepts this authority. Protected worker files prevent ordinary-user replacement of the elevated engine; they do not restrict the effects of owner-authorized scripts. Bypass mode offers no protection against prompt injection or unintended actions. Deny rules remain available. See https://code.claude.com/docs/en/permission-modes.
 
-1. `ProcessStartInfo.ArgumentList` doesn't exist in .NET Framework (PS 5.1) → an immediate
-   null-method crash. Build the `Arguments` string instead.
-2. Reading stdout/stderr only after `WaitForExit` deadlocks on chatty children (winget) —
-   the child fills the pipe buffer and never exits. Drain both pipes with `ReadToEndAsync`
-   concurrently.
-3. `Start-Process -RedirectStandard*` to files **hangs** when a grandchild (winget →
-   msiexec) inherits the file handles and keeps them open after the parent exits. Use
-   `ProcessStartInfo` + a bounded wait on the async readers, so a lingering grandchild can
-   never wedge the helper.
-
-With those in place, **both** `RunTrustedPowerShellScript` (arbitrary elevated PowerShell)
-and `WingetInstall` (machine-scope, no UAC) complete cleanly and return captured output.
-Verified on a real install: HKLM writes, `C:\Program Files` writes, a firewall rule, and
-machine-scope winget installs (7-Zip, fd) all ran and reported through the helper.
-
-> Earlier kit versions documented winget as "unreliable in a non-interactive task." That was
-> wrong — it was bug #3 above (handle inheritance), not winget. It's fixed.
-
-## Safety Model
-
-The helper accepts only structured jobs and known action names. It logs every job start,
-success, and failure. It restricts trusted script execution to local development roots
-(`C:\dev\`, `~\Documents\Claude\`, `~\.claude\`, and the helper temp dir). It is for
-reversible development infrastructure, not destructive system administration. Expand the
-action list only when a real development task needs it, and keep each action structured.
+If verification fails, registration and files remain for repair. Read install-log.txt and do not assume the helper works. Uninstall-Autonomy.ps1 -RemoveHelper unregisters the task but retains code and data files.
