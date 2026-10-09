@@ -1,4 +1,4 @@
-# Machine-specific / installed config — never commit
+# Machine-specific / installed config  -  never commit
 installed-config/
 *.bak
 *.bak-*
@@ -26,3 +26,4 @@ desktop.ini
 .idea/
 dist/
 node_modules/
+.gauntletgate/
