@@ -15,7 +15,7 @@ if ($InterruptRestoreRoot) {
     exit 0
 }
 $passed=0
-$sandbox=Join-Path $env:TEMP ('claude-recovery-'+[guid]::NewGuid().ToString('n'))
+$sandbox=[IO.Path]::GetFullPath((Join-Path $env:TEMP ('claude-recovery-'+[guid]::NewGuid().ToString('n'))))
 [void][IO.Directory]::CreateDirectory($sandbox)
 try {
     $root=Join-Path $sandbox 'user'; $project=Join-Path $sandbox 'project'
