@@ -2,7 +2,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
 $kit=Split-Path $PSScriptRoot -Parent
 Import-ConfigurationFunctions $kit
-$passed=0; $sandbox=Join-Path $env:TEMP ('claude-lifecycle-'+[guid]::NewGuid().ToString('n'))
+$passed=0; $sandbox=[IO.Path]::GetFullPath((Join-Path $env:TEMP ('claude-lifecycle-'+[guid]::NewGuid().ToString('n'))))
 New-Item -ItemType Directory -Path $sandbox | Out-Null
 try {
     $root=Join-Path $sandbox 'existing'; New-Item -ItemType Directory -Path $root | Out-Null

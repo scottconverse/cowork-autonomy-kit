@@ -32,7 +32,7 @@ The Windows CI sequence runs each test in a separate Windows PowerShell 5.1 proc
 
 The complete sequence passed once. The affected recovery/lifecycle/reconcile/uninstall/audit regressions were rerun after the final lock/hash changes. All `.ps1` files were parsed with `System.Management.Automation.Language.Parser::ParseFile`; the run reported `PASS: parsed 22 PowerShell scripts`.
 
-Hosted Windows runs exposed short-name temporary-path aliases in two fixture comparisons: the config-root assertion and the injected replacement-failure target. Expected roots and the recovery fixture now use canonical paths, so fault injection reaches the same file identity as production. These corrections do not change production root resolution.
+Hosted Windows runs exposed short-name temporary-path aliases in fixture comparisons: the config-root assertion, injected replacement-failure target and lifecycle error-path assertion. Expected roots and those fixtures now use canonical paths. The lifecycle failure was reproduced locally using a real Windows short-path alias; affected configuration tests were then exercised together with that temporary-path form. These corrections do not change production root resolution.
 
 ```text
 npm test
