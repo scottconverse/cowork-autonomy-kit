@@ -4,6 +4,9 @@ installed-config/
 *.bak-*
 config.toml
 .credentials.json
+.env
+.env.*
+!.env.example
 
 # Elevated helper runtime state
 elevated-dev-helper/queue/

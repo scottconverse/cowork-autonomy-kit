@@ -11,6 +11,10 @@ function Import-ProductionFunctions {
 }
 function Import-ConfigurationFunctions {
     param([string]$Kit)
+    $lib = Join-Path $Kit 'lib/AutonomySettings.ps1'
+    $ast = [Management.Automation.Language.Parser]::ParseFile($lib,[ref]$null,[ref]$null)
+    $names = @($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]},$false) | ForEach-Object Name)
+    Import-ProductionFunctions $lib $names
     Import-ProductionFunctions (Join-Path $Kit 'Setup-Autonomy.ps1') @('Read-KitSettings','New-PreKitSnapshot','Install-LiveOrLeave','Merge-KitSettings','Install-KitConfiguration')
     Import-ProductionFunctions (Join-Path $Kit 'Uninstall-Autonomy.ps1') @('Remove-IfMatchesStage','Restore-PreKitFile','Remove-KitSettings','Uninstall-KitConfiguration')
 }

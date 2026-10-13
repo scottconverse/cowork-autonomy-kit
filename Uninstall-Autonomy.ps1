@@ -4,10 +4,14 @@
 .DESCRIPTION
     Leaves general-purpose tools installed. No newest-backup guessing. WhatIf makes no writes.
     RemoveHelper unregisters the helper task; Program Files and ProgramData files remain.
+.PARAMETER RestoreLastReconcile
+    Restore the latest completed settings operation only. Leaves profiles, tools and helper installed.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param([switch]$RemoveHelper)
+param([switch]$RemoveHelper,[switch]$RestoreLastReconcile)
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib/AutonomySettings.ps1')
+if ($RestoreLastReconcile -and $RemoveHelper) { throw '-RestoreLastReconcile cannot be combined with -RemoveHelper.' }
 function Remove-IfMatchesStage {
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$Live, [string]$Staged)
@@ -58,22 +62,32 @@ function Remove-KitSettings {
 function Uninstall-KitConfiguration {
     [CmdletBinding(SupportsShouldProcess)]
     param([string]$ClaudeRoot)
+    $ClaudeRoot = Resolve-KitConfigRoot $ClaudeRoot
     $stage = Join-Path $ClaudeRoot 'autonomy-kit'
     $settings = Join-Path $ClaudeRoot 'settings.json'
-    if (-not (Restore-PreKitFile -Path $settings -Staged (Join-Path $stage 'settings.created-by-kit.json') -WhatIf:$WhatIfPreference)) {
-        Remove-KitSettings -Path $settings -WhatIf:$WhatIfPreference
-    }
-    foreach ($pair in @(@('CLAUDE.md','CLAUDE-Cowork-Core.md'),@('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),@('hooks\notify-turn-ended.ps1','notify-turn-ended.ps1'))) {
-        $live = Join-Path $ClaudeRoot $pair[0]; $staged = Join-Path $stage $pair[1]
-        if (-not (Restore-PreKitFile -Path $live -Staged $staged -WhatIf:$WhatIfPreference)) {
-            Remove-IfMatchesStage -Live $live -Staged $staged -WhatIf:$WhatIfPreference
+    $configurationLock=$null
+    if (-not $WhatIfPreference -and (Test-Path -LiteralPath $ClaudeRoot)) { $configurationLock=Open-KitOperationLock $ClaudeRoot }
+    try {
+        $manifest = Read-KitManifest $ClaudeRoot
+        if (@($manifest.Operations | Where-Object { $_.State -in @('prepared','writing','recovery-incomplete','restore-incomplete') }).Count) { throw "Unfinished recovery records retained at $stage. Recover the settings operation before uninstalling." }
+        if ($manifest.Baselines.Count) {
+            Restore-KitSettingsOperation -ClaudeRoot $ClaudeRoot -Baseline -OperationLock $configurationLock -WhatIf:$WhatIfPreference
         }
-    }
-    if ((Test-Path -LiteralPath $stage) -and $PSCmdlet.ShouldProcess($stage,'Remove kit staging directory')) {
-        $expected = [IO.Path]::GetFullPath((Join-Path $ClaudeRoot 'autonomy-kit'))
-        if ([IO.Path]::GetFullPath($stage) -ne $expected) { throw 'Unexpected cleanup target' }
-        [IO.Directory]::Delete($expected,$true)
-    }
+        if (-not @($manifest.Baselines | Where-Object Scope -eq 'user').Count) {
+            if (-not (Restore-PreKitFile -Path $settings -Staged (Join-Path $stage 'settings.created-by-kit.json') -WhatIf:$WhatIfPreference)) { Remove-KitSettings -Path $settings -WhatIf:$WhatIfPreference }
+        }
+        foreach ($pair in @(@('CLAUDE.md','CLAUDE-Cowork-Core.md'),@('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),@('hooks\notify-turn-ended.ps1','notify-turn-ended.ps1'))) {
+            $live = Join-Path $ClaudeRoot $pair[0]; $staged = Join-Path $stage $pair[1]
+            if (-not (Restore-PreKitFile -Path $live -Staged $staged -WhatIf:$WhatIfPreference)) {
+                Remove-IfMatchesStage -Live $live -Staged $staged -WhatIf:$WhatIfPreference
+            }
+        }
+        if ((Test-Path -LiteralPath $stage) -and $PSCmdlet.ShouldProcess($stage,'Remove kit staging directory')) {
+            $expected = [IO.Path]::GetFullPath((Join-Path $ClaudeRoot 'autonomy-kit'))
+            if ([IO.Path]::GetFullPath($stage) -ne $expected) { throw 'Unexpected cleanup target' }
+            [IO.Directory]::Delete($expected,$true)
+        }
+    } finally { if ($configurationLock) { $configurationLock.Dispose() } }
 }
 
 function Get-KitRemovalTaskNames {
@@ -89,6 +103,13 @@ function Get-KitRemovalTaskNames {
     }
 }
 
+$configRoot = Resolve-KitConfigRoot
+if ($RestoreLastReconcile) {
+    Restore-KitSettingsOperation -ClaudeRoot $configRoot -WhatIf:$WhatIfPreference
+    Write-Host 'Settings restore finished. Reinstalling may reapply the default reconcile. Profiles, tools and helper remain installed.'
+    return
+}
+Uninstall-KitConfiguration -ClaudeRoot $configRoot -WhatIf:$WhatIfPreference
 foreach ($taskName in @(Get-KitRemovalTaskNames -StatePath (Join-Path $env:ProgramData 'ClaudeElevatedHelper\install-state.json') -RemoveHelper:$RemoveHelper)) {
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and $PSCmdlet.ShouldProcess($taskName,'Stop and unregister scheduled task')) {
@@ -96,5 +117,4 @@ foreach ($taskName in @(Get-KitRemovalTaskNames -StatePath (Join-Path $env:Progr
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
     }
 }
-Uninstall-KitConfiguration -ClaudeRoot (Join-Path $env:USERPROFILE '.claude') -WhatIf:$WhatIfPreference
 Write-Host 'Toolchain left installed. Fully quit Claude from the system tray and reopen for settings changes.'

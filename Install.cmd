@@ -9,6 +9,8 @@ REM
 REM Pass through any args: e.g. double-click runs default, or from a terminal:
 REM     Install.cmd -SkipBrowsers
 REM     Install.cmd -SkipHelper
+REM     Install.cmd -ProjectRoot "C:\dev\Example Project"
+REM     Install.cmd -SkipClearBlockingRules
 
 setlocal
 set "PS1=%~dp0Setup-Autonomy.ps1"
