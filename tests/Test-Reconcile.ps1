@@ -36,7 +36,7 @@ try {
     $savedRoot=$env:CLAUDE_CONFIG_DIR
     try {
         $env:CLAUDE_CONFIG_DIR=$root
-        Assert-Kit ((Resolve-KitConfigRoot) -eq $root) 'configuration root override is resolved consistently'
+        Assert-Kit ((Resolve-KitConfigRoot) -eq [IO.Path]::GetFullPath($root)) 'configuration root override is resolved consistently'
         $env:CLAUDE_CONFIG_DIR=$user; $failed=$false
         try { Resolve-KitConfigRoot | Out-Null } catch { $failed=$true }
         Assert-Kit ($failed) 'file-valued config root is rejected without fallback'
