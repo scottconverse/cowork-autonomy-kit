@@ -150,7 +150,8 @@ function Get-KitBlockAudit {
             if ($value.permissions -and $value.permissions.PSObject.Properties.Name -contains 'defaultMode') {
                 $mode = $value.permissions.defaultMode
                 if ($source.Scope -in @('project','local') -or $mode -ne 'bypassPermissions') {
-                    $findings += & $add 'permissions.defaultMode' $mode 'mode override' 'Setup sets user bypass and removes selected project mode overrides unless -SkipBypass; verify session mode separately.' $source.Editable
+                    $remedy = if ($source.Editable) { 'Setup sets user bypass and removes selected project mode overrides unless -SkipBypass; verify session mode separately.' } else { 'Review the managed defaultMode with the policy owner; user/project mode edits do not change this source.' }
+                    $findings += & $add 'permissions.defaultMode' $mode 'mode override' $remedy $source.Editable
                 }
             }
             foreach ($event in @($value.hooks.PSObject.Properties)) {
@@ -168,7 +169,20 @@ function Get-KitBlockAudit {
             foreach ($field in @('permissions.disableBypassPermissionsMode','permissions.blockReadsOutsideWorkingDirectories','permissions.additionalDirectories','allowManagedPermissionRulesOnly','allowManagedHooksOnly','allowManagedMcpServersOnly','allowedMcpServers','deniedMcpServers','enabledMcpjsonServers','disabledMcpjsonServers','sandbox','disableAllHooks','managedSourcesBehavior','policyHelper')) {
                 $setting = Get-KitField $value $field
                 if ($null -ne $setting) {
-                    $findings += & $add $field (ConvertTo-Json -InputObject $setting -Depth 100 -Compress) 'potential restriction' 'Review this control at the listed source and verify its effect in the session; reconcile leaves it unchanged.' $false
+                    $remedy = switch -Wildcard ($field) {
+                        'permissions.disableBypassPermissionsMode' { 'To permit bypass, review removal of this disable control at this source with its owner.' }
+                        'permissions.blockReadsOutsideWorkingDirectories' { 'Use an allowed working directory, or review the working-directory boundary at this source.' }
+                        'permissions.additionalDirectories' { 'Check whether the required directory is included in the session working directories and this list.' }
+                        'allowManagedPermissionRulesOnly' { 'When enabled, local permission rules can be ignored; change the relevant managed rules with the policy owner.' }
+                        'allowManagedHooksOnly' { 'When enabled, local hooks can be ignored; inspect the managed hooks with the policy owner.' }
+                        'allowManagedMcpServersOnly' { 'Check whether the required MCP server is supplied by managed configuration.' }
+                        '*Mcp*' { 'Check the affected MCP server against this allow/deny or enable/disable list with the source owner.' }
+                        'sandbox' { 'Compare the failed operation with sandbox filesystem and network restrictions at this source.' }
+                        'disableAllHooks' { 'When enabled, hooks are disabled; investigate other block sources before attributing a failure to a hook.' }
+                        'managedSourcesBehavior' { 'Confirm policy composition and selected sources in /status; a local inventory cannot resolve remote or host policy.' }
+                        'policyHelper' { 'Review the policy helper and its actual output with its owner; this audit does not execute it.' }
+                    }
+                    $findings += & $add $field (ConvertTo-Json -InputObject $setting -Depth 100 -Compress) 'potential restriction' ($remedy+' Reconcile leaves this control unchanged.') $false
                 }
             }
         }
