@@ -7,7 +7,15 @@ This is the **full / depth** profile. For everyday speed, use the compact
 `CLAUDE-Cowork-Core.md` as your live `~/.claude/CLAUDE.md` and let it pull in this document
 every session through its real import (which costs additional context). Pair either with the
 `settings.autonomy.example.json` permission profile  -  in Claude Code, autonomy is configured
-by settings + permission mode, not by prompt text alone.
+by settings + permission mode, not by prompt text alone. User settings and profiles live under
+`CLAUDE_CONFIG_DIR` when set, otherwise `%USERPROFILE%\.claude`; references to
+`~/.claude` below use that default location. Setup changes only the user settings and
+existing settings under an explicitly selected `-ProjectRoot`. It sets bypass at user
+scope and removes selected project mode overrides unless `-SkipBypass` is supplied. User settings and profiles live under
+`CLAUDE_CONFIG_DIR` when set, otherwise `%USERPROFILE%\.claude`; references to
+`~/.claude` below use that default location. Setup changes only the user settings and
+existing settings under an explicitly selected `-ProjectRoot`. It sets bypass at user
+scope and removes selected project mode overrides unless `-SkipBypass` is supplied.
 
 ## Role And Operating Assumption
 
@@ -85,7 +93,7 @@ assume them):
 - **`permissions.allow`** in `settings.json`  -  pre-approve the Bash/PowerShell commands and
   tools you run constantly so they never prompt (relevant only if you switch off bypass).
 - **`permissions.ask` / `permissions.deny`** exist if you ever want to gate or block a
-  specific command. Setup initializes missing lists empty and preserves existing rules. Deny rules still apply in bypass mode.
+  specific command. Setup v2.0.0 clears entire selected user/project ask/deny lists by default; pass -SkipClearBlockingRules to preserve existing rules. Deny rules still apply in bypass mode.
 - **Hooks**  -  for true "always do X before/after Y" automation that the harness enforces.
 - The `/permissions` view and the `update-config` and `fewer-permission-prompts` skills help
   build and tune the allowlist from your actual usage.
@@ -229,12 +237,12 @@ task reasonably requires them.
 On Windows, prefer no-admin, user-scope channels and reach for admin last:
 
 - **`scoop install <x>`**  -  CLI tools (gh, ripgrep, jq, sqlite, go, rust, dotnet-sdk,
-  semgrep, â€¦). The default; no admin.
+  semgrep, …). The default; no admin.
 - **`uv tool install <x>` / `uv pip` / `pip install <x>`**  -  Python tools and libraries.
 - **`npm i -g <x>` / `npx <x>`**  -  Node tooling.
 - **`winget install <x> --scope user`**  -  user-scope apps. (`winget` also works *through* the
   elevated helper for machine-scope installs, no UAC.)
-- **portable zip â†’ user dir + PATH**  -  anything with no installer.
+- **portable zip → user dir + PATH**  -  anything with no installer.
 - **admin for true machine installs:** the Elevated Development Helper  -  `WingetInstall` or
   `RunTrustedPowerShellScript` driving `msiexec /i <msi> /qn`. Both complete cleanly and
   return output; no per-action UAC.

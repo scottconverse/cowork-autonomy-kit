@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit developer manual
 
-Version 2.0.0 candidate (unreleased)
+Version 2.0.0
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -8,7 +8,7 @@ The Cowork tab is not in scope. Cowork has its own permission modes and runs com
 
 ## 1. Product and prerequisites
 
-The desktop Code tab is primary; the CLI is secondary. Windows and a Claude Pro or Max account are expected. The kit does not install Claude. Historical repo and CLAUDE-Cowork-*.md filenames remain stable.
+The desktop Code tab is primary; the CLI is secondary. Native Windows, Windows PowerShell 5.1, Windows Package Manager (`winget`, from Microsoft App Installer, used for missing Python), and working Claude Code authentication are required for actual Claude sessions; this installer does not provision an account or subscription. The kit does not install Claude. Historical repo and CLAUDE-Cowork-*.md filenames remain stable.
 
 ## 2. Installation
 
@@ -82,7 +82,7 @@ Doctor is read-only. It accepts -ProjectRoot and reports rule provenance, mode o
 
 Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: BlockAudit, Reconcile, Recovery, SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths, HelperInstall and AuditRegressions, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
 
-Historical installed verification belongs to the earlier release. See [candidate evidence](IMPLEMENTATION-EVIDENCE.md) for current checks and runtime limitations. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
+The v2.0.0 existing-machine walkthrough completed the actual uninstaller, Install.cmd and Doctor with exit 0, and verified the installed helper. A fresh CLI loaded bypassPermissions but authentication failed; this does not prove file-action or prompt behavior. Desktop runtime remains unverified. Historical earlier-release verification is recorded separately. See [verification evidence](IMPLEMENTATION-EVIDENCE.md) for current checks and runtime limitations. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
 
 ## 12. Uninstallation and rollback
 
@@ -101,3 +101,7 @@ Computer-use behavior is defined in the full profile. No dialog-clicking watcher
 ## 15. Official references
 
 [Desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [hooks](https://code.claude.com/docs/en/hooks), [settings reference](https://code.claude.com/docs/en/settings-reference).
+
+## 16. Implementation map
+
+See [architecture](ARCHITECTURE.md) for setup, recovery and helper diagrams, and the [user manual](USER-MANUAL.md) for operational commands. `lib/AutonomySettings.ps1` is the shared definitions-only audit, plan, manifest, lock and restore implementation. `Setup-Autonomy.ps1` supplies the user settings merge and owns tool/config/profile/helper orchestration. `Doctor-Autonomy.ps1` reads the same source inventory without running hooks. `Uninstall-Autonomy.ps1` selects baseline or latest-operation restore and manages profile/task cleanup.

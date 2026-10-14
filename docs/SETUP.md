@@ -1,6 +1,6 @@
 # Claude Code Windows setup
 
-Version 2.0.0 candidate (unreleased) - Windows
+Version 2.0.0 - Windows
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -10,8 +10,10 @@ The repo name and CLAUDE-Cowork-*.md names are historical. They remain unchanged
 
 ## Quick start
 
+Prerequisites: native Windows, Windows PowerShell 5.1 and Windows Package Manager (`winget`, from Microsoft App Installer), plus a separately installed Claude app/CLI. Sign in to Claude before testing actual sessions. Setup uses winget to install missing Python; bare Windows Sandbox images may omit it.
+
 1. In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions.
-2. Review the scripts and accepted risks in [README](../README.md). Download and extract the ZIP or clone the repository.
+2. Review the scripts and accepted risks in [README](../README.md). Download and extract the [v2.0.0 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/download/v2.0.0/cowork-autonomy-kit-v2.0.0.zip), checking its SHA-256 against the release SHA256SUMS.txt. For source development, clone the repository and select tag v2.0.0.
 3. Run `Install.cmd`, review the printed summary, and answer y. `Install.cmd -Yes` is available for scripted runs. `-SkipBypass` preserves mode keys; `-SkipClearBlockingRules` preserves existing ask/deny arrays; `-SkipHelper` avoids helper installation. Add `-ProjectRoot "C:\dev\Example Project"` to reconcile that project.
 4. Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles.
 5. Run `Doctor-Autonomy.ps1` and check the live profile import, tools, settings and helper state.
@@ -28,7 +30,7 @@ The live Core imports the depth profile with a real standalone line:
 @CLAUDE-Cowork-Autonomous-Software-Development.md
 ```
 
-Both files are installed beside each other under ~/.claude. The full profile loads every session and consumes context. Customized live CLAUDE.md is preserved; add that line yourself if Doctor reports it missing. A live file matching the previous staged kit copy updates automatically.
+Both files are installed beside each other under the resolved configuration root. The full profile loads every session and consumes context. Customized live CLAUDE.md is preserved; add that line yourself if Doctor reports it missing. A live file matching the previous staged kit copy updates automatically.
 
 ## Which shell runs commands
 
@@ -52,6 +54,8 @@ See the full profile's computer-use section for the single operating rule. The k
 
 `Uninstall-Autonomy.ps1 -RestoreLastReconcile` restores the entire files saved by the latest completed settings operation, retaining profiles/tools/helper and backing up later edits first. Repeating it does not undo older operations. Reinstalling can reapply the reconcile. Normal Uninstall restores each recorded project first-touch baseline and the first pre-kit snapshots and first saves current files to unique `.before-uninstall-*.bak` backups so later owner edits remain recoverable. If a file was originally absent it is removed only when still equal to the installed staged copy. Legacy settings without snapshots have only the kit defaultMode and notify hook stripped; timestamped backups are never selected as a substitute for the true baseline. `-WhatIf` makes no writes. General-purpose tools remain installed.
 
-Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. Current runtime limits are in [verification evidence](IMPLEMENTATION-EVIDENCE.md). No clean-machine run was performed. See [unblocking and exact recovery commands](UNBLOCKING.md) and the [test plan](../tests/TEST-PLAN.md).
+Tests and CI run configuration functions in temporary roots, never the full Setup or a live helper installation. Separately, the existing-machine walkthrough completed legacy uninstall, the actual Install.cmd entrypoint, Doctor and installed helper verification. Fresh CLI mode loading succeeded, but authentication prevented a file-action smoke test; Desktop runtime remains unverified. Current runtime limits are in [verification evidence](IMPLEMENTATION-EVIDENCE.md). A complete clean-machine installation remains unverified; the fresh Sandbox probe stopped at missing winget. See [unblocking and exact recovery commands](UNBLOCKING.md) and the [test plan](../tests/TEST-PLAN.md).
 
 Official references: [desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [settings](https://code.claude.com/docs/en/settings-reference).
+
+For everyday operation and copyable commands, see the [user manual](USER-MANUAL.md). For implementation flow and trust boundaries, see [architecture](ARCHITECTURE.md).

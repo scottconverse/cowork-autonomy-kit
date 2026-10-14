@@ -1,53 +1,42 @@
 # Autonomy kit capability comparison
 
-2026-10-13 | Repository inspection, not a new installation or runtime certification
+2026-10-13 | Claude Code kit v2.0.0 and [Codex kit v2.0.0 at 1e2f0e8](https://github.com/scottconverse/codex-desktop-autonomy-kit/tree/1e2f0e85d0e1982809913f18caa2c0c5006a0b21)
 
-Compared [Codex v2.0.0 at 1e2f0e8](https://github.com/scottconverse/codex-desktop-autonomy-kit/tree/1e2f0e85d0e1982809913f18caa2c0c5006a0b21) with [Claude Code kit v1.6.1 at df512e2](https://github.com/scottconverse/cowork-autonomy-kit/tree/df512e24614243b52b864cc45edbcead0c96cc17). The proposed column refers to spec v1.2, targeting Claude kit release v2.0.0; it is not shipped functionality.
+The kits share user-scope development tools, persistent instructions, permissive configuration, diagnostics and optional administrator execution. Their host applications use different permission systems. Claude kit v2.0.0 implements the previously proposed permission audit, selected local rule reconciliation and exact settings recovery. It does not implement every Codex-kit feature.
 
-The kits share the same practical aim: user-scope tools, persistent instructions, permissive configuration, diagnostics, and optional administrator execution. The Codex kit currently has more supporting autonomy features. The Claude proposal improves permission visibility beyond either kit's current dashboard, but will not make their runtime permission systems identical.
+| Capability | Codex kit v2.0.0 inspected baseline | Claude Code kit v2.0.0 |
+|---|---|---|
+| Main surface | Windows Codex Desktop | Windows Claude Desktop Code tab and CLI; excludes Cowork tab |
+| Tools | User-scope developer/bootstrap and browser tooling | User-scope development bootstrap with Playwright/Chromium |
+| Configuration | Reconciles three autonomy keys in TOML while preserving other text/formatting | JSON value merge; clears selected user/project ask/deny by default while preserving unrelated settings |
+| No-prompt defaults | approval_policy=never, sandbox_mode=danger-full-access and Windows sandbox configuration | User bypassPermissions default, project-mode override removal; Desktop enablement and remembered mode still matter |
+| Command rules | Generated execpolicy allow rules for discovered shell paths and command names; validates sample commands with CLI | No equivalent kit-owned command-rules component |
+| Restriction diagnostics | Rules freshness/BOM/shell coverage, configuration and helper dashboard | Source-attributed user/project/policy audit, potential hook/control restrictions and explicit uninspected runtime inputs |
+| Recovery guide | docs/BLOCKED-BY-POLICY.md | [UNBLOCKING.md](UNBLOCKING.md), including interrupted settings operations |
+| Capability self-assessment | Installed capability-check skill and managed global AGENTS block | General action/verification instructions; no equivalent installed skill |
+| Instruction profiles | Staged Core/depth profiles; custom config does not receive new developer instructions during reconcile | Core imports depth each session; custom live instructions retained and missing import reported |
+| Administrator execution | Highest-privilege scheduled-task helper; trusted PowerShell scripts | Same broad practical capability, with different roots/state paths and protected worker files |
+| Helper concurrency | Queue task policy, atomic publication and drain loop | IgnoreNew, atomic publication and serial drain; final-empty-check/exit race remains |
+| Remote bootstrap integrity | uv/Scoop downloads checked against pinned SHA-256 values | uv/Scoop download-and-execute flows without equivalent pins |
+| Exact recovery | Backup manifest records exact original backup and hash | Retains first user pre-kit and project first-touch baselines; per-operation exact backups/hashes and latest-operation restore |
+| Reuse license | MIT at the inspected baseline | No reuse license provided |
 
-| Capability | Codex kit today | Claude Code kit today | Claude proposal |
-|---|---|---|---|
-| Main surface | Windows Codex Desktop | Windows Claude Desktop Code tab and CLI; excludes Cowork tab | Same scope |
-| Tools | User-scope development bootstrap and browser tooling | Similar bootstrap with Playwright/Chromium | No change |
-| Existing custom settings | Reconciles three autonomy keys in TOML; preserves other text/formatting | JSON merge sets user bypass, retains existing ask/deny and unrelated values | Clears selected user/project ask/deny; correct user-mode inheritance |
-| No-prompt configuration | `approval_policy=never`, `sandbox_mode=danger-full-access`, Windows sandbox setting | User `permissions.defaultMode=bypassPermissions`; Desktop enablement still needed | Same underlying mode; remaining restrictions reported |
-| Command-rule mechanism | Generated execpolicy allow rules for discovered shell paths and command names; validates with Codex CLI | No matching kit-owned command-rules component | No invented direct equivalent |
-| Restriction diagnostics | Rules-file freshness/BOM/shell coverage; configuration and helper status | User permission counts, profiles, tools, helper status | Provenance across selected files and local policy, hook uncertainty, explicit coverage limits |
-| Dedicated recovery guidance | `docs/BLOCKED-BY-POLICY.md` | General setup/developer documentation | New `docs/UNBLOCKING.md` |
-| Capability self-assessment | Installed `capability-check` skill and managed global AGENTS block | General action/verification guidance; no equivalent installed skill found | Remains a separate possible enhancement |
-| Instructions | Core/depth profiles staged; custom config does not receive new developer instructions during reconcile | Core imports the depth profile each session; customized live profiles retained | Existing behavior retained |
-| Admin execution | Highest-privilege scheduled-task helper; arbitrary trusted PowerShell scripts | Same broad practical capability, different roots/state paths | No helper redesign |
-| Concurrent helper requests | `Queue` task policy, atomic publication, drain loop | `IgnoreNew`, serial drain; README acknowledges a final-empty-check/exit race | Known difference remains outside unblock scope |
-| Remote bootstrap integrity | uv/Scoop downloads checked against pinned SHA-256 values | Inspected Setup invokes uv/Scoop download-and-execute flows without equivalent pins | Separate possible enhancement |
-| Recovery baseline | Config backup manifest records exact backup and hash | First pre-kit snapshots; current-file backup before restore | Retains pre-kit baseline, adds project tracking and latest-settings-operation restore |
-| Source reuse terms | MIT license | README says no reuse license provided | No license change in this specification |
+## Permission systems are not equivalent
 
-## What the Codex rules actually establish
+The inspected Codex `Get-CommandRulesText` writes broad executable-prefix allows for discovered shells plus command-name rules. Its `codex execpolicy check` validation proves sample invocations against the supplied file, not every session policy or command spelling. See [the pinned Codex Setup source](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/Setup-Autonomy.ps1).
 
-The inspected `Get-CommandRulesText` implementation writes broad executable-prefix allows for discovered shells, plus command-name rules. This is wider than a precise allowlist for one delete flag. Its validation exercises sample arguments with `codex execpolicy check`; that proves those samples against the supplied rule file, not every possible session policy or command spelling. See [Codex Setup](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/Setup-Autonomy.ps1).
+Those rules do not establish an override of explicit forbidden rules, enterprise requirements or service-side controls. The [OpenAI rule semantics](https://learn.chatgpt.com/docs/agent-configuration/rules) describe strictest-match behavior and compound-command handling. Claude's [permission modes](https://code.claude.com/docs/en/permission-modes) are a different mechanism; there is no direct port of an execpolicy file.
 
-The kit documents these rules as addressing built-in force-delete/link-opener rejections. That does not establish an override of explicit forbidden rules, enterprise requirements, or service-side controls. Official documentation says the strictest matching rule wins, and compound-command handling affects which invocation is matched. [OpenAI rule semantics](https://learn.chatgpt.com/docs/agent-configuration/rules)
+Claude kit v2.0.0 clears complete ask/deny arrays only in selected user/project files, corrects local mode inheritance and reports remaining inspected restrictions. Managed sources stay read-only. Static inventory cannot prove the complete policy of a running Desktop session. Dynamic hooks, launch/host policy and Desktop choices remain visible as uncertainty.
 
-Consequently, port the diagnostic and recovery pattern, not a claim that either kit can switch off all safety or platform enforcement. Also avoid repeating an exhaustive “only these commands can ever block” claim across product versions.
+## Remaining differences
 
-## Where the Claude feature differs
+Capability-skill parity, bootstrap hash pinning and helper queue parity remain possible future work. They are not shipped v2.0.0 features. Neither kit grants task authorization for unrelated actions; the elevated helper supplies operating-system capability, and application/service constraints remain separate.
 
-Its core job is to find and remove configured ask/deny entries at the selected local scopes, correct mode inheritance, and explain restrictions left behind. A static inventory cannot establish an active Desktop session's full policy. Dynamic hooks and uninspected launch/host policy must remain visible as uncertainty rather than being counted as cleared.
+## Source map and evidence
 
-This is a stronger source-attribution feature than either inspected Doctor currently offers. It is also a narrower intervention than deleting every hook, sandbox setting, or managed source. That boundary is explicit in the revised spec and preserves its owner-approved user/project scope.
+Claude implementation: [Setup](../Setup-Autonomy.ps1), [shared audit/recovery library](../lib/AutonomySettings.ps1), [Doctor](../Doctor-Autonomy.ps1), [Uninstall](../Uninstall-Autonomy.ps1), [helper](../elevated-dev-helper/README.md) and [architecture](ARCHITECTURE.md). Historical comparison began at [Claude v1.6.1, df512e2](https://github.com/scottconverse/cowork-autonomy-kit/tree/df512e24614243b52b864cc45edbcead0c96cc17); that is a baseline, not the current implementation.
 
-## Recommended handling of the other differences
+Codex claims refer to the pinned source above and its [README](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/README.md) and [helper documentation](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/elevated-dev-helper/README.md). This is not a newly run Codex stress test.
 
-Carry automatic local reconcile, exact backup attribution, a dedicated troubleshooting guide, and honest diagnostics into this release. Keep capability-skill parity, bootstrap hash pinning, and helper queue parity on a separate list. Each could be useful, especially the acknowledged helper scheduling race, but none is required to implement the requested permission audit correctly.
-
-Do not describe either kit as an automatic grant of authority for unrelated tasks. The elevated helpers provide OS capability; task authorization and application/service boundaries remain separate.
-
-## Source map and evidence limits
-
-- Configuration, tool bootstrap, rule generation, and installed skill: each repository's `Setup-Autonomy.ps1`; [Codex README](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/README.md), [Claude README](https://github.com/scottconverse/cowork-autonomy-kit/blob/df512e24614243b52b864cc45edbcead0c96cc17/README.md).
-- Recovery: each repository's `Uninstall-Autonomy.ps1`; Claude `tests/Test-SettingsMerge.ps1` and developer manual.
-- Helper behavior: [Codex helper documentation](https://github.com/scottconverse/codex-desktop-autonomy-kit/blob/1e2f0e85d0e1982809913f18caa2c0c5006a0b21/elevated-dev-helper/README.md), [Claude helper documentation](https://github.com/scottconverse/cowork-autonomy-kit/blob/df512e24614243b52b864cc45edbcead0c96cc17/elevated-dev-helper/README.md). Queue reliability here is a source/documentation comparison, not a newly run stress test.
-- Audit extent: each repository's `Doctor-Autonomy.ps1`.
-
-Repository files were read from fresh clones at the commits above; a cached GitHub web view showed older Codex version text, so this comparison uses the checked-out source. No real configuration, installed helper, or runtime permission mode was changed for the comparison.
+Claude v2.0.0 has 150 passing Windows regression assertions and an existing-machine uninstall/install/Doctor/helper walkthrough. CLI initialization reported bypassPermissions but authentication failed, so file-action and prompt behavior remain unverified. Desktop runtime and clean-machine installation remain unverified. See [verification evidence](IMPLEMENTATION-EVIDENCE.md) for exact scope.

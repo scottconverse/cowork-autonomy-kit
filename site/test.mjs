@@ -20,7 +20,7 @@ const version = changelog.match(/^## v(\d+\.\d+\.\d+)/m)?.[1];
 assert(version, 'Newest changelog heading must have a version');
 for (const path of ['README.md', 'docs/SETUP.md', 'docs/DEVELOPER-MANUAL.md', 'site/index.html']) {
   const content = await readFile(path, 'utf8');
-  // Current candidate and published download/upgrade history can differ.
+  // Current version and historical upgrade references can differ.
   const declared = path.endsWith('.html')
     ? content.match(/Public source · v(\d+\.\d+\.\d+)/)?.[1]
     : content.match(/^Version (\d+\.\d+\.\d+)/m)?.[1];

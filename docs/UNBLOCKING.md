@@ -1,6 +1,6 @@
 # Permission reconciliation and recovery
 
-The v2.0.0 candidate clears selected local permission rules and reports remaining restrictions. It does not guarantee that Claude can perform every operation without interaction. Native Windows PowerShell 5.1, the CLI and Desktop's Code tab are the intended surfaces. Cowork, WSL, cloud sessions and other operating systems are not covered.
+Version 2.0.0 clears selected local permission rules and reports remaining restrictions. It does not guarantee that Claude can perform every operation without interaction. Native Windows PowerShell 5.1, the CLI and Desktop's Code tab are the intended surfaces. Cowork, WSL, cloud sessions and other operating systems are not covered.
 
 ## Choose the scope
 
@@ -78,4 +78,4 @@ For an originally absent target, preserve the current bytes and remove that exac
 
 A pending last-operation restore resumes with `-RestoreLastReconcile`; a pending baseline restore resumes with normal Uninstall. Setup refuses to reconcile while a restore remains pending. A lock-contention error means another operation holds the lock or access failed; wait for the actual operation to finish or correct the reported access error.
 
-See [candidate evidence](IMPLEMENTATION-EVIDENCE.md) for what was actually exercised. Platform references: [settings](https://code.claude.com/docs/en/settings), [managed policy](https://code.claude.com/docs/en/managed-settings), [permission modes](https://code.claude.com/docs/en/permission-modes).
+See [verification evidence](IMPLEMENTATION-EVIDENCE.md) for what was actually exercised. Platform references: [settings](https://code.claude.com/docs/en/settings), [managed policy](https://code.claude.com/docs/en/managed-settings), [permission modes](https://code.claude.com/docs/en/permission-modes).

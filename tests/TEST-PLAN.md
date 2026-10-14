@@ -1,4 +1,4 @@
-# v2.0.0 candidate test plan
+# v2.0.0 test plan
 
 Run each script using powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/<name>.ps1, under Windows PowerShell 5.1:
 
@@ -21,4 +21,4 @@ Windows CI runs the ten regression tests and parsing on push and PR. It never ru
 
 The optional Test-AutonomyKit capability harness performs machine-local probes and is not a CI test. Legacy watcher checks have been removed.
 
-Current evidence and honest runtime limitations are in [IMPLEMENTATION-EVIDENCE.md](../docs/IMPLEMENTATION-EVIDENCE.md). No clean-machine run was performed. For this change, runtime verification uses an isolated user configuration and scratch project, without a mode flag that could hide failed inheritance. Record actual mode, create/read/delete results and permission prompt observation separately for CLI and Desktop Code. Do not use old runtime evidence to claim this candidate was exercised.
+Current evidence and honest runtime limitations are in [IMPLEMENTATION-EVIDENCE.md](../docs/IMPLEMENTATION-EVIDENCE.md). No clean-machine run was performed. The existing-machine walkthrough separately ran legacy uninstall, Install.cmd and Doctor successfully and verified the installed helper. Fresh CLI initialization reported bypassPermissions but authentication failed; Desktop runtime was not exercised. Further runtime verification should use a scratch project without a mode flag that could hide failed inheritance. Record actual mode, create/read/delete results and permission prompt observation separately for CLI and Desktop Code. Do not use old runtime evidence to claim this release was exercised.

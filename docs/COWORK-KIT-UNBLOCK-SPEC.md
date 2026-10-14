@@ -2,7 +2,7 @@
 
 Version 1.2 | 2026-10-13 | revised by Codex from v1.1 at Scott's request
 
-Status: normative v1.2 specification. Candidate implementation and its runtime limitations are recorded in [IMPLEMENTATION-EVIDENCE.md](IMPLEMENTATION-EVIDENCE.md).
+Status: normative v1.2 specification implemented for kit v2.0.0. Verification and runtime limitations are recorded in [IMPLEMENTATION-EVIDENCE.md](IMPLEMENTATION-EVIDENCE.md).
 Target kit release: **v2.0.0**.
 
 Canonical repository copy: `docs/COWORK-KIT-UNBLOCK-SPEC.md`; imported from the owner-approved v1.2 document.
@@ -26,7 +26,7 @@ Repository source inspected on 2026-10-13:
 - [Cowork kit v1.6.1 baseline, df512e2](https://github.com/scottconverse/cowork-autonomy-kit/tree/df512e24614243b52b864cc45edbcead0c96cc17).
 - [Codex kit v2.0.0 baseline, 1e2f0e8](https://github.com/scottconverse/codex-desktop-autonomy-kit/tree/1e2f0e85d0e1982809913f18caa2c0c5006a0b21).
 
-Current Cowork Setup already merges JSON, sets user bypass unless skipped, retains existing ask/deny, and maintains a notification hook. Doctor reports user-layer counts. Uninstall restores first pre-kit snapshots, preserves current files before restoration, and deliberately avoids guessing from timestamped backups. These are source observations, not newly executed install tests.
+At the v1.6.1 baseline, Cowork Setup already merges JSON, sets user bypass unless skipped, retains existing ask/deny, and maintains a notification hook. Doctor reports user-layer counts. Uninstall restores first pre-kit snapshots, preserves current files before restoration, and deliberately avoids guessing from timestamped backups. These are source observations, not newly executed install tests.
 
 Platform facts affecting this design:
 
@@ -35,7 +35,7 @@ Platform facts affecting this design:
 - Windows policy may come from remote administration, HKLM/HKCU registry, or managed files/drop-ins. HKCU can be user-writable and administrators can edit local policy; report-only is this kit's scope boundary, not a claim of filesystem impossibility. [Managed settings](https://code.claude.com/docs/en/managed-settings)
 - Hooks may originate in settings, plugins, skills, or agents and make input-dependent decisions. Merely finding a hook does not prove a particular call will be denied. [Hooks](https://code.claude.com/docs/en/hooks)
 
-Before implementation, confirm these specific behaviors against the installed target version. If behavior differs, document the supported version and adjust the implementation; do not silently retain a known ineffective setting. Later releases are unverified until checked.
+Implementation validation must confirm these specific behaviors against the installed target version. The v2.0.0 evidence record distinguishes verified configuration behavior from unverified runtime interactions. If behavior differs, document the supported version and adjust the implementation; do not silently retain a known ineffective setting. Later releases are unverified until checked.
 
 ## 3. Owner decisions retained
 
