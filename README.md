@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit
 
-Version 1.6.1 - Windows - Independent community project, not affiliated with Anthropic.
+Version 2.0.0 - Windows - Independent community project, not affiliated with Anthropic.
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -8,45 +8,49 @@ The Cowork tab is not in scope. Cowork has its own permission modes and runs com
 
 The repository and CLAUDE-Cowork-*.md filenames are historical and remain stable for existing installs.
 
-[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v1.6.1) | [Changelog](CHANGELOG.md)
+[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [User manual](docs/USER-MANUAL.md) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v2.0.0) | [Changelog](CHANGELOG.md)
 
 ## What it does
 
 - Installs missing user-scope developer tools, Playwright and its Chromium browser.
-- Merges Claude Code settings, preserving custom keys and existing ask/deny rules.
+- Merges Claude Code settings, preserving custom keys while clearing selected ask/deny arrays by default. Use `-SkipClearBlockingRules` to retain rules.
 - Stages profiles and preserves customized live instruction files. The Core imports the depth profile every session, which costs context.
 - Installs an optional administrator helper with protected program files and separate queue/results storage.
 - Provides Doctor, configuration rollback, and isolated regression tests.
 
 ## Before installing
 
+Use native Windows with Windows PowerShell 5.1 and Windows Package Manager (`winget`, provided by Microsoft App Installer). Install Claude separately and sign in for actual sessions. Setup uses winget when Python is missing.
+
 In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions.
 
-Review the [setup guide](docs/SETUP.md) before running `Install.cmd`. Setup shows its changes and asks `Continue? [y/N]`; `-Yes` skips that question. It writes `permissions.defaultMode = "bypassPermissions"` unless `-SkipBypass` is used, and wires a PowerShell notification hook. It never hides Anthropic's warning dialogs. The owner accepts the risk described here.
+Review the [setup guide](docs/SETUP.md) before running `Install.cmd`. Setup shows its changes and asks `Continue? [y/N]`; `-Yes` skips that question. It sets user `permissions.defaultMode = "bypassPermissions"`, removes mode overrides from existing explicitly selected project settings, clears their ask/deny arrays, and wires a user notification hook. `-SkipBypass` preserves mode keys; `-SkipClearBlockingRules` preserves rules. `-ProjectRoot "C:\dev\Example Project"` selects a project; no projects are scanned automatically. It never hides Anthropic's warning dialogs. The owner accepts the risk described here.
 
-Anthropic states: "`bypassPermissions` offers no protection against prompt injection or unintended actions." [Permission modes](https://code.claude.com/docs/en/permission-modes). With the helper installed, code Claude writes under `C:\dev\` can run as administrator without a UAC prompt for each action. Trusted roots do not sandbox script effects. `deny` rules still apply in every mode if the owner wants a hard stop for a path.
+Anthropic states: "`bypassPermissions` offers no protection against prompt injection or unintended actions." [Permission modes](https://code.claude.com/docs/en/permission-modes). With the helper installed, code Claude writes under `C:\dev\` can run as administrator without a UAC prompt for each action. Trusted roots do not sandbox script effects. Retained `deny` rules still apply in bypass mode; use `-SkipClearBlockingRules` to retain them during Setup. Managed policy, hooks, Desktop mode selection and built-in restrictions may still limit execution.
 
-Download and extract the release ZIP, inspect it, then run `Install.cmd`. The optional helper requests Windows UAC approval. The kit does not install Claude itself.
+Download the [v2.0.0 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/download/v2.0.0/cowork-autonomy-kit-v2.0.0.zip), verify it against the release SHA256SUMS.txt, extract it, inspect it, then run `Install.cmd`. The optional helper requests Windows UAC approval. The kit does not install Claude itself.
 
 Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles.
 
 ## Upgrading
 
-Run Uninstall first to remove a legacy watcher task and restore the recorded pre-kit configuration. Rerun the helper installer to migrate its paths, then Setup. Check pending jobs in the old helper directory before deleting it. For a customized live CLAUDE.md, add `@CLAUDE-Cowork-Autonomous-Software-Development.md` on its own line if Doctor reports the import missing.
+Upgrade directly from v1.6.1 by running the new Setup; do not uninstall first. The first pre-kit snapshots are preserved and each settings change gets an exact recovery record. Older helper/watcher migrations remain separate; see the setup guide. For a customized live CLAUDE.md, add `@CLAUDE-Cowork-Autonomous-Software-Development.md` on its own line if Doctor reports the import missing.
 
-This patch release includes the Claude-specific audit fixes. Setup now updates unchanged kit-owned profiles, preserves customized profiles, and repairs stale or unverified helper installations while retaining recorded custom paths. Missing required tools or failed browser installation produce a failing Setup exit code.
+Version 2.0.0 changes defaults: selected ask/deny rules are now cleared unless you opt out. [Unblocking and recovery](docs/UNBLOCKING.md) covers Doctor coverage, both opt-outs, `CLAUDE_CONFIG_DIR`, project settings, interrupted operations and `-RestoreLastReconcile`.
 
 ## Documentation and verification
 
+- [Architecture and recovery diagrams](docs/ARCHITECTURE.md)
+- [Capability comparison with the Codex kit](docs/AUTONOMY-KIT-CAPABILITY-COMPARISON.md)
 - [Developer manual](docs/DEVELOPER-MANUAL.md)
 - [Elevated helper](elevated-dev-helper/README.md)
 - [Core instructions](CLAUDE-Cowork-Core.md)
 - [Test plan](tests/TEST-PLAN.md)
 - [Website development](site/README.md)
 
-Isolated Windows PowerShell 5.1 lifecycle and regression tests cover the real installer functions. A clean-machine installation remains unverified. See release notes for exact evidence.
+Windows regression tests passed 150 assertions. An existing-machine walkthrough ran the legacy uninstall, full Install.cmd, Doctor and elevated-helper verification successfully. A fresh CLI loaded bypassPermissions but failed authentication, so file actions and prompt behavior were not proven. Desktop runtime activation and a clean-machine installation remain unverified. See [verification evidence](docs/IMPLEMENTATION-EVIDENCE.md).
 
-Verification on an existing Windows installation passed file create/read/delete in a fresh desktop Code session and a real elevated helper CheckAdmin job. Additional audit regressions cover arguments, upgrades, malformed settings, diagnostics, rollback and result publication. A clean-machine installation remains unverified.
+Historical v1.6.1 verification is recorded in the changelog. For v2.0.0, see [verification evidence](docs/IMPLEMENTATION-EVIDENCE.md). Configuration tests do not prove a prompt-free Desktop or CLI session.
 
 ## License
 

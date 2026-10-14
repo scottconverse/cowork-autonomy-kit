@@ -13,9 +13,11 @@
     powershell -NoProfile -ExecutionPolicy Bypass -File .\Doctor-Autonomy.ps1
 #>
 [CmdletBinding()]
-param()
+param([string]$ProjectRoot)
 
-$cl = "$env:USERPROFILE\.claude"
+. (Join-Path $PSScriptRoot 'lib/AutonomySettings.ps1')
+$cl = Resolve-KitConfigRoot
+$audit = Get-KitBlockAudit -ClaudeRoot $cl -ProjectRoot $ProjectRoot
 function Hdr($title) { Write-Host "`n=== $title ===" -ForegroundColor Cyan }
 function L($k,$v) { "{0,-32} {1}" -f $k, $v | Write-Host }
 
@@ -30,7 +32,7 @@ $chromium = Get-ChildItem -Path $pwBrowsers -Directory -Filter 'chromium-*' -Err
     Sort-Object Name -Descending | Select-Object -First 1
 L 'playwright chromium' $(if ($chromium) { $chromium.FullName } else { '(missing; run: python3 -m playwright install chromium)' })
 
-Hdr "Config (~/.claude)"
+Hdr "Config ($cl)"
 Write-Host "In Claude: Settings, Claude Code, turn on 'Allow bypass permissions mode'. Without it the Code tab cannot use Bypass permissions."
 Write-Host 'Doctor cannot read the app toggle; verify it in Claude Settings.'
 $claudeMd = Join-Path $cl "CLAUDE.md"
@@ -106,3 +108,7 @@ if (Test-Path -LiteralPath $statePath) {
         L 'state' $task.State
     } catch { L 'helper status' ('invalid or inaccessible: ' + $_.Exception.Message) }
 } else { L 'helper state' 'missing; install or migrate helper using its installer' }
+
+Hdr 'Block sources and coverage'
+Write-KitBlockAudit $audit
+if ($audit.ErrorCount) { exit 1 }

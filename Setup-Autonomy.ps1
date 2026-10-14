@@ -7,6 +7,10 @@
     and optionally launches a visible UAC helper installer. The Cowork tab is out of scope.
 .PARAMETER SkipBypass
     Leave defaultMode unchanged while applying other selected setup changes.
+.PARAMETER SkipClearBlockingRules
+    Retain selected ask/deny arrays. Default Setup clears them entirely.
+.PARAMETER ProjectRoot
+    Exact existing project directory; reconcile its existing .claude settings files.
 .PARAMETER Yes
     Skip the Continue? question for scripted runs.
 .PARAMETER SkipConfig
@@ -22,12 +26,15 @@ param(
     [switch]$SkipBrowsers,
     [switch]$Yes,
     [switch]$SkipBypass,
-    [switch]$SkipHelper
+    [switch]$SkipHelper,
+    [switch]$SkipClearBlockingRules,
+    [string]$ProjectRoot
 )
 
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $kit = $PSScriptRoot
+. (Join-Path $kit 'lib/AutonomySettings.ps1')
 
 function Step($m) { Write-Host "`n=== $m ===" -ForegroundColor Cyan }
 function Prepend-UserPath($dir) {
@@ -50,31 +57,8 @@ function Find-UserPython {
 
 function Read-KitSettings {
     param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) { return [pscustomobject]@{} }
-    try {
-        $value = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $value -or $value -isnot [pscustomobject]) { throw 'Expected a JSON object' }
-        foreach ($key in @('permissions','hooks')) {
-            if ($value.PSObject.Properties.Name -contains $key -and $value.$key -isnot [pscustomobject]) { throw "$key must be an object" }
-        }
-        foreach ($key in @('allow','ask','deny','additionalDirectories')) {
-            if ($value.permissions -and $value.permissions.PSObject.Properties.Name -contains $key) {
-                if ($value.permissions.$key -isnot [array] -or @($value.permissions.$key | Where-Object { $_ -isnot [string] }).Count) { throw "permissions.$key must be an array of strings" }
-            }
-        }
-        if ($value.hooks) {
-            foreach ($event in $value.hooks.PSObject.Properties) {
-                if ($event.Value -isnot [array]) { throw "hooks.$($event.Name) must be an array" }
-                foreach ($entry in $event.Value) {
-                    if ($entry -isnot [pscustomobject] -or $entry.hooks -isnot [array]) { throw "hooks.$($event.Name) entries must contain a hooks array" }
-                    foreach ($hook in $entry.hooks) {
-                        if ($hook -isnot [pscustomobject]) { throw "hooks.$($event.Name) handlers must be objects" }
-                    }
-                }
-            }
-        }
-        return $value
-    } catch { throw "Invalid settings file '$Path': $($_.Exception.Message). Nothing was written." }
+    if (-not (Test-Path -LiteralPath $Path -ErrorAction Stop)) { return [pscustomobject]@{} }
+    return ConvertFrom-KitSettingsJson -Raw ([IO.File]::ReadAllText($Path)) -Path $Path
 }
 
 function New-PreKitSnapshot {
@@ -138,36 +122,52 @@ function Merge-KitSettings {
 }
 
 function Install-KitConfiguration {
-    param([string]$KitRoot, [string]$ClaudeRoot, [switch]$SkipBypass)
+    param([string]$KitRoot, [string]$ClaudeRoot, [switch]$SkipBypass, [switch]$SkipClearBlockingRules, [string]$ProjectRoot, [switch]$SkipConfig)
+    if ($SkipConfig) { return }
+    $ClaudeRoot = Resolve-KitConfigRoot $ClaudeRoot
     $settingsPath = Join-Path $ClaudeRoot 'settings.json'
     # Validate before directories, backups, snapshots or live files are changed.
-    $settings = Read-KitSettings -Path $settingsPath
-    $stage = Join-Path $ClaudeRoot 'autonomy-kit'
-    New-Item -ItemType Directory -Force -Path $stage | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeRoot 'hooks') | Out-Null
-    foreach ($name in @('settings.json','CLAUDE.md','CLAUDE-Cowork-Autonomous-Software-Development.md','hooks\notify-turn-ended.ps1')) {
-        New-PreKitSnapshot -Path (Join-Path $ClaudeRoot $name)
+    $plan = @(New-KitSettingsPlan -ClaudeRoot $ClaudeRoot -ProjectRoot $ProjectRoot -SkipBypass:$SkipBypass -SkipClearBlockingRules:$SkipClearBlockingRules)
+    foreach ($change in $plan) {
+        Write-Host "Settings changes: $($change.Path)"
+        foreach ($field in $change.Fields) {
+            if ($field.Field -eq 'hooks.Stop') { Write-Host '  hooks.Stop: notification wiring updated; foreign hook contents omitted from diff.' }
+            else { Write-Host "  $($field.Field): $($field.Before) -> $($field.After)" }
+        }
     }
-    $pairs = @(
-        @('CLAUDE-Cowork-Core.md','CLAUDE.md'),
-        @('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),
-        @('hooks\notify-turn-ended.ps1','hooks\notify-turn-ended.ps1')
-    )
-    foreach ($pair in $pairs) {
-        $source = Join-Path $KitRoot $pair[0]
-        $staged = Join-Path $stage (Split-Path -Leaf $source)
-        Install-LiveOrLeave -Source $source -Destination (Join-Path $ClaudeRoot $pair[1]) -PreviousStage $staged
-        Copy-Item -LiteralPath $source -Destination $staged -Force
-    }
-    Copy-Item -LiteralPath (Join-Path $KitRoot 'settings.autonomy.example.json') -Destination $stage -Force
-    if (Test-Path -LiteralPath $settingsPath) { Copy-Item -LiteralPath $settingsPath -Destination "$settingsPath.bak-$((Get-Date).ToString('yyyyMMdd-HHmmss-fffffff'))" }
-    $merged = Merge-KitSettings -Settings $settings -ClaudeRoot $ClaudeRoot -SkipBypass:$SkipBypass
-    [IO.File]::WriteAllText($settingsPath, ($merged | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
-    $createdSettings = Join-Path $stage 'settings.created-by-kit.json'
-    if ((Test-Path -LiteralPath "$settingsPath.pre-autonomy-kit.absent") -and -not (Test-Path -LiteralPath $createdSettings)) {
-        Copy-Item -LiteralPath $settingsPath -Destination $createdSettings
-    }
-    Write-Host "Merged Claude Code settings and staged profiles at $stage"
+    $configurationLock=Open-KitOperationLock $ClaudeRoot
+    try {
+        Invoke-KitSettingsOperation -ClaudeRoot $ClaudeRoot -Plan $plan -OperationLock $configurationLock
+        $stage = Join-Path $ClaudeRoot 'autonomy-kit'
+        New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $ClaudeRoot 'hooks') | Out-Null
+        # Retain the legacy user snapshot without taking it after half a merge.
+        if (-not (Test-Path -LiteralPath "$settingsPath.pre-autonomy-kit") -and -not (Test-Path -LiteralPath "$settingsPath.pre-autonomy-kit.absent")) {
+            $baseline = (Read-KitManifest $ClaudeRoot).Baselines | Where-Object Path -eq $settingsPath | Select-Object -First 1
+            if ($baseline.OriginalExists) { Copy-Item -LiteralPath $baseline.BackupPath -Destination "$settingsPath.pre-autonomy-kit" }
+            elseif ($baseline) { [IO.File]::WriteAllText("$settingsPath.pre-autonomy-kit.absent",'',[Text.UTF8Encoding]::new($false)) }
+        }
+        foreach ($name in @('CLAUDE.md','CLAUDE-Cowork-Autonomous-Software-Development.md','hooks\notify-turn-ended.ps1')) {
+            New-PreKitSnapshot -Path (Join-Path $ClaudeRoot $name)
+        }
+        $pairs = @(
+            @('CLAUDE-Cowork-Core.md','CLAUDE.md'),
+            @('CLAUDE-Cowork-Autonomous-Software-Development.md','CLAUDE-Cowork-Autonomous-Software-Development.md'),
+            @('hooks\notify-turn-ended.ps1','hooks\notify-turn-ended.ps1')
+        )
+        foreach ($pair in $pairs) {
+            $source = Join-Path $KitRoot $pair[0]
+            $staged = Join-Path $stage (Split-Path -Leaf $source)
+            Install-LiveOrLeave -Source $source -Destination (Join-Path $ClaudeRoot $pair[1]) -PreviousStage $staged
+            Copy-Item -LiteralPath $source -Destination $staged -Force
+        }
+        Copy-Item -LiteralPath (Join-Path $KitRoot 'settings.autonomy.example.json') -Destination $stage -Force
+        $createdSettings = Join-Path $stage 'settings.created-by-kit.json'
+        if ((Test-Path -LiteralPath "$settingsPath.pre-autonomy-kit.absent") -and -not (Test-Path -LiteralPath $createdSettings)) {
+            Copy-Item -LiteralPath $settingsPath -Destination $createdSettings
+        }
+        Write-Host "Merged Claude Code settings and staged profiles at $stage"
+    } finally { $configurationLock.Dispose() }
 }
 
 function Get-RegisteredKitHelper {
@@ -207,7 +207,11 @@ function Assert-KitSetupSucceeded {
 }
 
 Write-Host 'Setup will install missing developer tools, merge Claude Code settings, preserve customized live CLAUDE.md, and wire the notification hook.'
-Write-Host ('Bypass mode: ' + $(if ($SkipBypass) { 'unchanged (-SkipBypass)' } else { 'defaultMode=bypassPermissions; existing ask/deny retained' }))
+Write-Host ('Bypass mode: ' + $(if ($SkipBypass) { 'unchanged in every selected file (-SkipBypass)' } else { 'user defaultMode=bypassPermissions; remove selected project mode overrides' }))
+Write-Host ('Ask/deny arrays: ' + $(if ($SkipClearBlockingRules) { 'retained (-SkipClearBlockingRules)' } else { 'cleared entirely in selected files' }))
+Write-Host ('Project: ' + $(if ($ProjectRoot) { $ProjectRoot } else { 'not requested' }))
+Write-Host 'Bypass reduces permission protection. Untrusted content can cause unintended actions; retained policy and runtime restrictions may still apply.'
+if ($SkipConfig) { Write-Host 'Configuration, profiles, staging and recovery writes: skipped (-SkipConfig).' }
 Write-Host ('Elevated helper: ' + $(if ($SkipHelper) { 'skipped' } else { 'optional administrator helper; Windows UAC if installation is needed' }))
 if (-not $Yes -and (Read-Host 'Continue? [y/N]') -notmatch '^(?i)y(es)?$') { Write-Host 'Cancelled; no changes made.'; return }
 $setupFailures = @()
@@ -324,7 +328,12 @@ if ($py3cmd) {
 
 # 6. Claude Code configuration
 if (-not $SkipConfig) {
-    Install-KitConfiguration -KitRoot $kit -ClaudeRoot (Join-Path $env:USERPROFILE '.claude') -SkipBypass:$SkipBypass
+    $configRoot = Resolve-KitConfigRoot
+    Write-Host 'Before configuration:'
+    Write-KitBlockAudit (Get-KitBlockAudit -ClaudeRoot $configRoot -ProjectRoot $ProjectRoot)
+    Install-KitConfiguration -KitRoot $kit -ClaudeRoot $configRoot -ProjectRoot $ProjectRoot -SkipBypass:$SkipBypass -SkipClearBlockingRules:$SkipClearBlockingRules
+    Write-Host 'After configuration (runtime activation remains unverified):'
+    Write-KitBlockAudit (Get-KitBlockAudit -ClaudeRoot $configRoot -ProjectRoot $ProjectRoot)
 }
 
 # ------------------------------------------------------------------- 8. elevated-dev-helper

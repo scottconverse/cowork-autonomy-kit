@@ -2,6 +2,23 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v2.0.0 - 2026-10-14
+
+### Changed
+- Clear selected user/project ask and deny arrays by default, with -SkipClearBlockingRules to retain them.
+- Configure bypass at user scope and remove selected project mode overrides; -SkipBypass preserves all mode keys.
+- Honor CLAUDE_CONFIG_DIR consistently and accept an explicit ProjectRoot.
+
+### Added
+- Shared read-only block-source audit with provenance, policy uncertainty and coverage errors.
+- Exact SHA-256 settings-operation history, first-touch project baselines, guarded writes and recovery.
+- RestoreLastReconcile for the latest settings operation, distinct from whole-kit uninstall.
+- Focused audit, reconcile and recovery fixtures; see docs/IMPLEMENTATION-EVIDENCE.md for checks and runtime limitations.
+
+### Documentation and verification
+- Add a user manual and architecture diagrams covering configuration, exact recovery and the elevated helper; refresh every current guide and the landing page for v2.0.0.
+- Windows regression coverage: 150 assertions plus parsing and portability guards. Existing-machine uninstall, actual Install.cmd, Doctor and helper installation checks passed. Fresh CLI initialization loaded bypassPermissions; authentication prevented a model/tool exercise. Desktop runtime and a complete clean-machine install remain unverified; see the evidence document for scope.
+
 ## v1.6.1 - 2026-10-09
 
 ### Fixed

@@ -1,5 +1,7 @@
 # Claude Code Windows elevated helper
 
+Version 2.0.0. See the [user manual](../docs/USER-MANUAL.md) and [helper trust-boundary diagram](../docs/ARCHITECTURE.md#elevated-helper-trust-boundary).
+
 Serves Claude Code sessions in the desktop Code tab and CLI running as a normal, non-elevated Windows user. This helper does not configure the Cowork tab.
 
 ## Installation and migration
@@ -34,3 +36,7 @@ The task runs at highest privilege with MultipleInstances=IgnoreNew. Processing 
 Code Claude writes under C:\dev\ can run as administrator without per-action UAC. The owner accepts this authority. Protected worker files prevent ordinary-user replacement of the elevated engine; they do not restrict the effects of owner-authorized scripts. Bypass mode offers no protection against prompt injection or unintended actions. Deny rules remain available. See https://code.claude.com/docs/en/permission-modes.
 
 If verification fails, registration and files remain for repair. Read install-log.txt and do not assume the helper works. Uninstall-Autonomy.ps1 -RemoveHelper unregisters the task but retains code and data files.
+
+## Release verification
+
+The v2.0.0 existing-machine install upgraded and verified the installed helper. Mocked regression tests cover installer logic separately; they do not themselves prove installed ACLs or administrator execution. See [verification evidence](../docs/IMPLEMENTATION-EVIDENCE.md) for the exact scope and remaining runtime limitations.

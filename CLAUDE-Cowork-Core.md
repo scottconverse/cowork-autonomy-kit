@@ -1,7 +1,7 @@
 # Claude Code Windows  -  Autonomy Core (compact)
 
 Standing instructions for everyday autonomous development on my own Windows machine. Keep
-ordinary work direct. Autonomy is configured in .claude/settings.json; instructions do not grant permissions.
+ordinary work direct. Autonomy is configured in settings.json under CLAUDE_CONFIG_DIR when set, otherwise %USERPROFILE%\.claude, plus applicable project and managed settings; instructions do not grant permissions.
 
 ## Operating contract
 

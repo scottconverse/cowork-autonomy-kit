@@ -2,7 +2,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Import-ProductionFunctions.ps1')
 $kit=Split-Path $PSScriptRoot -Parent
 Import-ConfigurationFunctions $kit
-$passed=0; $sandbox=Join-Path $env:TEMP ('claude-lifecycle-'+[guid]::NewGuid().ToString('n'))
+$passed=0; $sandbox=[IO.Path]::GetFullPath((Join-Path $env:TEMP ('claude-lifecycle-'+[guid]::NewGuid().ToString('n'))))
 New-Item -ItemType Directory -Path $sandbox | Out-Null
 try {
     $root=Join-Path $sandbox 'existing'; New-Item -ItemType Directory -Path $root | Out-Null
@@ -41,7 +41,9 @@ try {
     Add-Content (Join-Path $root 'CLAUDE.md') 'User change'
     $sp=Join-Path $root 'settings.json'; $s=Get-Content $sp -Raw | ConvertFrom-Json; $s | Add-Member custom 'later'; [IO.File]::WriteAllText($sp,($s | ConvertTo-Json -Depth 20))
     Install-KitConfiguration -KitRoot $kit -ClaudeRoot $root
-    Uninstall-KitConfiguration -ClaudeRoot $root
+    $incomplete=$false
+    try { Uninstall-KitConfiguration -ClaudeRoot $root } catch { $incomplete=$_.Exception.Message -like '*Kept modified kit-created file*' }
+    Assert-Kit ($incomplete -and (Test-Path (Join-Path $root 'autonomy-kit/settings-history.json'))) 'modified created settings report incomplete restore and retain recovery history'
     Assert-Kit ((Test-Path $sp) -and (Test-Path (Join-Path $root 'CLAUDE.md'))) 'customized originally-absent files retained'
     Write-Host "SUMMARY: $passed PASS / 0 FAIL"
 } finally { Remove-TestRoot $sandbox }

@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit developer manual
 
-Version 1.6.1
+Version 2.0.0
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -8,7 +8,7 @@ The Cowork tab is not in scope. Cowork has its own permission modes and runs com
 
 ## 1. Product and prerequisites
 
-The desktop Code tab is primary; the CLI is secondary. Windows and a Claude Pro or Max account are expected. The kit does not install Claude. Historical repo and CLAUDE-Cowork-*.md filenames remain stable.
+The desktop Code tab is primary; the CLI is secondary. Native Windows, Windows PowerShell 5.1, Windows Package Manager (`winget`, from Microsoft App Installer, used for missing Python), and working Claude Code authentication are required for actual Claude sessions; this installer does not provision an account or subscription. The kit does not install Claude. Historical repo and CLAUDE-Cowork-*.md filenames remain stable.
 
 ## 2. Installation
 
@@ -22,7 +22,9 @@ Download and inspect the release ZIP, then run Install.cmd. Setup summarizes byp
 |---|---|
 | -Yes | Skip Setup's confirmation question |
 | -SkipBypass | Leave defaultMode unchanged while performing other selected setup work |
-| -SkipConfig | Skip configuration files, snapshots and settings merge |
+| -SkipConfig | Skip settings, profiles, staging, snapshots and history writes |
+| -SkipClearBlockingRules | Preserve selected ask/deny arrays; they are cleared by default |
+| -ProjectRoot | Exact existing project root; edit only its existing .claude settings files |
 | -SkipBrowsers | Skip Chromium download |
 | -SkipHelper | Skip helper installation |
 
@@ -36,7 +38,7 @@ Fully quit Claude (right-click the Claude icon in the system tray, Quit), then o
 
 ## 5. Settings and memory
 
-Desktop and CLI share settings and CLAUDE.md. Setup merges bypassPermissions, initializes absent ask/deny arrays and preserves existing rules and unrelated keys. -SkipBypass preserves defaultMode. It does not hide Anthropic warning dialogs.
+Desktop and CLI share settings and CLAUDE.md. Setup sets bypassPermissions at user scope, removes selected project mode overrides, and clears selected ask/deny arrays by default. -SkipClearBlockingRules retains those arrays. -SkipBypass preserves all mode keys. Unrelated nested values and foreign hooks survive. User configuration uses CLAUDE_CONFIG_DIR when set, otherwise %USERPROFILE%\.claude. It does not hide Anthropic warning dialogs.
 
 Setup installs the Core as CLAUDE.md and the depth profile alongside it. The Core has a standalone @CLAUDE-Cowork-Autonomous-Software-Development.md import; it loads every session and costs context. Unchanged kit-owned live files update using the previous staged copy as the ownership baseline. Customized live files are backed up and preserved. Doctor reports the exact live import. Add the import manually if missing in a customized CLAUDE.md.
 
@@ -60,11 +62,11 @@ The invoker publishes jobs atomically; the worker also publishes complete result
 
 ## 9. Updating and recovery
 
-Run Uninstall first to remove any old watcher task. Setup repairs a helper when verified state, installed program hashes or task configuration are stale. It preserves recorded custom paths; the helper installer can also be run directly. Add the depth import to a customized CLAUDE.md. Repair malformed settings before retrying: Setup validates JSON and nested permission/hook shapes, names the bad file, throws and leaves configuration unchanged. Missing tools or failed browser installation produce a failing exit code. First pre-kit snapshots are never replaced by reruns; timestamped backups remain additional recovery material.
+Upgrade directly from v1.6.1 with Setup; keep the original pre-kit snapshots. Uninstall-first is only for a separately needed legacy watcher migration. Setup repairs a helper when verified state, installed program hashes or task configuration are stale. It preserves recorded custom paths; the helper installer can also be run directly. Add the depth import to a customized CLAUDE.md. Repair malformed settings before retrying: Setup validates JSON and nested permission/hook shapes, names the bad file, throws and leaves configuration unchanged. Missing tools or failed browser installation produce a failing exit code. First pre-kit snapshots are never replaced by reruns; timestamped backups remain additional recovery material.
 
 ## 10. Diagnostics and troubleshooting
 
-Doctor is read-only. It reports tools/Chromium, configuration, depth import, reminder of the app toggle, legacy watcher presence and helper paths read from state. It does not guess where the app stores the bypass toggle.
+Doctor is read-only. It accepts -ProjectRoot and reports rule provenance, mode overrides, potential hook/control restrictions, and source coverage in addition to the existing installation dashboard. Static inspection errors return nonzero; finding a configured rule does not. Remote policy, launch flags and live session state are explicitly uninspected. It does not guess where the app stores the bypass toggle.
 
 | Symptom | Action |
 |---|---|
@@ -78,13 +80,13 @@ Doctor is read-only. It reports tools/Chromium, configuration, depth import, rem
 
 ## 11. Testing and verification
 
-Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths, HelperInstall and AuditRegressions, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
+Run the Windows PowerShell 5.1 tests listed in tests/TEST-PLAN.md: BlockAudit, Reconcile, Recovery, SettingsMerge, UninstallBakFilter, Lifecycle, NoBOM, NoHardcodedPaths, HelperInstall and AuditRegressions, plus all-script parsing. Windows CI runs the same tests on push and PR. npm test checks site content/version/font constraints; npm run build builds the site. Tests AST-extract production functions, with temporary profile roots and mocked external task triggers; they do not run full Setup or install a live helper. The settings-dedupe mutation proof must fail when real dedupe is broken. Portability includes forward-slash paths in tracked text files.
 
-Verification on an existing Windows installation passed elevated installation, ACL readback, installed-invoker self-tests and a fresh desktop Code session with file create/read/delete and helper CheckAdmin. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
+The v2.0.0 existing-machine walkthrough completed the actual uninstaller, Install.cmd and Doctor with exit 0, and verified the installed helper. A fresh CLI loaded bypassPermissions but authentication failed; this does not prove file-action or prompt behavior. Desktop runtime remains unverified. Historical earlier-release verification is recorded separately. See [verification evidence](IMPLEMENTATION-EVIDENCE.md) for current checks and runtime limitations. A clean-machine installation remains unverified. The audit regressions also launch a real child executable to verify Windows argument handling.
 
 ## 12. Uninstallation and rollback
 
-Restore the first settings.json and CLAUDE.md pre-autonomy-kit snapshots. Before restoration, preserve current files in unique .before-uninstall-*.bak backups so later edits remain recoverable. An absent marker allows removal only if live bytes still match the staged kit copy. Modified files remain. For older installs without snapshots, strip only the kit bypass default and notify hook; do not restore a newest timestamped backup. WhatIf performs no writes, including in the legacy strip branch. Writes are UTF-8 without BOM. General-purpose tools stay installed. -RemoveHelper additionally unregisters the helper task; installed helper files and data remain.
+Normal Uninstall restores the first settings.json and CLAUDE.md pre-autonomy-kit snapshots and recorded project first-touch baselines. -RestoreLastReconcile instead restores only the latest settings operation and leaves the rest of the kit installed. It cannot be combined with -RemoveHelper. Missing/corrupt backups and unresolved paths retain recovery state and report failure. See [exact recovery instructions](UNBLOCKING.md). Before restoration, preserve current files in unique .before-uninstall-*.bak backups so later edits remain recoverable. An absent marker allows removal only if live bytes still match the staged kit copy. Modified files remain. For older installs without snapshots, strip only the kit bypass default and notify hook; do not restore a newest timestamped backup. WhatIf performs no writes, including in the legacy strip branch. Writes are UTF-8 without BOM. General-purpose tools stay installed. -RemoveHelper additionally unregisters the helper task; installed helper files and data remain.
 
 ## 13. Repository, website and releases
 
@@ -92,10 +94,14 @@ Keep runtime jobs, logs, snapshots and .gauntletgate artifacts out of Git. GitHu
 
 ## 14. Accepted security risk and computer use
 
-Anthropic states: "`bypassPermissions` offers no protection against prompt injection or unintended actions." See [permission modes](https://code.claude.com/docs/en/permission-modes). The owner accepts this risk. With the helper installed, code Claude writes under C:\dev\ can run as administrator without a UAC prompt per action. Deny rules still apply in bypass mode if the owner wants a hard stop for a path. Protected helper programs are not a sandbox for trusted scripts.
+Anthropic states: "`bypassPermissions` offers no protection against prompt injection or unintended actions." See [permission modes](https://code.claude.com/docs/en/permission-modes). The owner accepts this risk. With the helper installed, code Claude writes under C:\dev\ can run as administrator without a UAC prompt per action. Retained deny rules still apply in bypass mode; pass -SkipClearBlockingRules during Setup to preserve them. Protected helper programs are not a sandbox for trusted scripts.
 
 Computer-use behavior is defined in the full profile. No dialog-clicking watcher is installed. The Code tab asks once per app per session, and the browser offers Always allow per site. Browser safety checks and other platform exceptions can still prompt even in bypass mode.
 
 ## 15. Official references
 
 [Desktop](https://code.claude.com/docs/en/desktop), [permission modes](https://code.claude.com/docs/en/permission-modes), [memory](https://code.claude.com/docs/en/memory), [hooks](https://code.claude.com/docs/en/hooks), [settings reference](https://code.claude.com/docs/en/settings-reference).
+
+## 16. Implementation map
+
+See [architecture](ARCHITECTURE.md) for setup, recovery and helper diagrams, and the [user manual](USER-MANUAL.md) for operational commands. `lib/AutonomySettings.ps1` is the shared definitions-only audit, plan, manifest, lock and restore implementation. `Setup-Autonomy.ps1` supplies the user settings merge and owns tool/config/profile/helper orchestration. `Doctor-Autonomy.ps1` reads the same source inventory without running hooks. `Uninstall-Autonomy.ps1` selects baseline or latest-operation restore and manages profile/task cleanup.
