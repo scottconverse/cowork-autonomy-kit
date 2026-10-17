@@ -17,6 +17,7 @@ The repository and CLAUDE-Cowork-*.md filenames are historical and remain stable
 - Stages profiles and preserves customized live instruction files. The Core imports the depth profile every session, which costs context.
 - Installs an optional administrator helper with protected program files and separate queue/results storage.
 - Provides Doctor, configuration rollback, and isolated regression tests.
+- `New-AgentProject.ps1` turns the hook-kit guardrails on for a project before its first agent prompt: writes `.claude\hook-kit.json` (and `.codex\hook-kit.json`), `RULES.md`, an empty read ledger, a measurement stub and a receipts folder, then proves the read-ledger gate blocks a code write there. Refuses to finish if a kit is not installed.
 
 ## Before installing
 

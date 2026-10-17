@@ -2,6 +2,11 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## Unreleased
+
+### Added
+- `New-AgentProject.ps1` and `templates/agent-project/`: opt a project into the Claude and Codex hook kits before the first agent prompt (policy files, rules, read ledger, measurement stub, receipts folder, host pointer lines), refusing unless the kits are installed and proving the read-ledger gate blocks a code write in that project. `tests/Test-NewAgentProject.ps1` covers it in a sandbox (17 checks).
+
 ## v2.0.0 - 2026-10-14
 
 ### Changed

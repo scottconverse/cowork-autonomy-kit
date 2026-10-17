@@ -1,0 +1,36 @@
+{
+  "enabled": true,
+
+  "inject-rules": {
+    "rulesFile": "__CONFIG_DIR__/RULES.md",
+    "heading": "PROJECT RULES (obey every line, no exceptions):"
+  },
+
+  "read-ledger-gate": {
+    "ledgerFile": "__CONFIG_DIR__/READ-LEDGER.md",
+    "upstreamRoots": ["__UPSTREAM__"],
+    "mustMention": [],
+    "minEntries": 1,
+    "minLines": 0,
+    "label": "__PROJECT__",
+    "nextStep": "Read the upstream code first. Write one ledger row per file you read: `- <path> — <lines> lines`. Then write code."
+  },
+
+  "measure-gate": {
+    "receiptDir": "work/receipts",
+    "receiptPattern": "^receipt-.*\\.json$",
+    "measureCommand": "node work/measure/run.mjs",
+    "maxBlocks": 3,
+    "label": "__PROJECT__"
+  },
+
+  "sprint-gate": {
+    "cap": 25,
+    "label": "__PROJECT__"
+  },
+
+  "double-check": {
+    "quote": "Owner: \"Check everything twice, read everything, do not skim, check the code.\"",
+    "label": "__PROJECT__"
+  }
+}

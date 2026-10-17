@@ -49,6 +49,20 @@ Setup stages the Core and depth profile, then installs them into the resolved us
 
 The depth file must be beside CLAUDE.md. Its content loads every session and consumes context. Historical `CLAUDE-Cowork-*` filenames remain for compatibility.
 
+## Start a new agent project with the gates on
+
+Added Oct 17, 2026, after a two-day agent run on a project where the hook kits existed on the machine and nothing had turned them on. Run this once per project, before the first prompt:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\New-AgentProject.ps1 -ProjectRoot C:\dev\myproj -Upstream C:\upstream\a,C:\upstream\b
+```
+
+It writes `.claude\hook-kit.json` and `.codex\hook-kit.json` (policy for the Claude and Codex hook kits: read-ledger, measure, sprint, double-check, rules injection), `.claude\RULES.md`, an empty `.claude\READ-LEDGER.md`, `work\measure\run.mjs` (a stub that refuses to write a receipt until replaced) and `work\receipts\`, and appends one pointer line to `CLAUDE.md` and `AGENTS.md`. Existing files are kept unless `-Force`.
+
+It refuses to finish unless the Claude hook kit is registered in the user `settings.json`, and unless the Codex kit is registered in `CODEX_HOME\hooks.json` (pass `-SkipCodex` to leave Codex out). At the end it runs the installed `read-ledger-gate` against a fake code write in the project and requires exit 2, so "the gate is on" is a measured fact, not a hope.
+
+Then edit `.claude\hook-kit.json` (`upstreamRoots`, `mustMention`, `minEntries`, `minLines`, `measureCommand`), replace the measurement stub, and in Codex make sure the kit hooks are trusted. The kits live at [claude-hook-kit](https://github.com/scottconverse/claude-hook-kit) and [codex-hook-kit](https://github.com/scottconverse/codex-hook-kit).
+
 ## Diagnose a restriction
 
 ```powershell
