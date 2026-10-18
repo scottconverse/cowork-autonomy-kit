@@ -1,0 +1,16 @@
+name: E2E
+on:
+  push:
+  pull_request:
+    paths: ['e2e/**']
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx playwright install
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: report
