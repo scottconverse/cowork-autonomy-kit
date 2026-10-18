@@ -33,6 +33,10 @@
     "label": "__PROJECT__"
   },
 
+  "citation-gate": {
+    "label": "__PROJECT__"
+  },
+
   "ran-before-done": {
     "stateDir": "__CONFIG_DIR__/state",
     "label": "__PROJECT__"
