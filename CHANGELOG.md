@@ -6,6 +6,7 @@ All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
 ### Added
 - `New-AgentProject.ps1` and `templates/agent-project/`: opt a project into the Claude and Codex hook kits before the first agent prompt (policy files, rules, read ledger, measurement stub, receipts folder, host pointer lines), refusing unless the kits are installed and proving the read-ledger gate blocks a code write in that project. `tests/Test-NewAgentProject.ps1` covers it in a sandbox (17 checks).
+- `Test-CiStandard.ps1`: audit a repository's GitHub Actions workflows against the CI standard (required-job budget, no every-push runs for non-required checks, nightly schedule, concurrency with cancel-in-progress, per-job timeout, plus the carried duplicate-trigger, heavy-marker and artifact-retention rules), one PASS/FAIL row per rule with file and line, exit 1 on any FAIL. Ported from the archived agent-pipeline-codex `check_actions_budget.py`. `tests/Test-CiStandard.ps1` covers it against good and bad fixture workflows under `tests/fixtures/ci-standard/`; see `docs/handoff-ci-standard-check.md`.
 
 ## v2.0.0 - 2026-10-14
 

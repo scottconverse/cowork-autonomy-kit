@@ -18,6 +18,7 @@ The repository and CLAUDE-Cowork-*.md filenames are historical and remain stable
 - Installs an optional administrator helper with protected program files and separate queue/results storage.
 - Provides Doctor, configuration rollback, and isolated regression tests.
 - `New-AgentProject.ps1` turns the hook-kit guardrails on for a project before its first agent prompt: writes `.claude\hook-kit.json` (and `.codex\hook-kit.json`), `RULES.md`, an empty read ledger, a measurement stub and a receipts folder, then proves the read-ledger gate blocks a code write there. Refuses to finish if a kit is not installed.
+- `Test-CiStandard.ps1 -RepoRoot <repo>` audits a repository's `.github/workflows/*.yml` against the owner's CI standard: required checks kept to about 10, non-required checks path-filtered plus nightly and never on every push, `concurrency` with `cancel-in-progress` on every workflow, every job under a 10-minute `timeout-minutes`. One PASS/FAIL row per rule with file and line; exit 1 on any FAIL. Ported from the archived `check_actions_budget.py`; see `docs/handoff-ci-standard-check.md` for what was carried, inverted or dropped.
 
 ## Before installing
 

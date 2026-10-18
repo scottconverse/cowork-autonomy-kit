@@ -1,0 +1,62 @@
+name: Eleven required jobs
+on:
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  job1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 1
+  job2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 2
+  job3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 3
+  job4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 4
+  job5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 5
+  job6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 6
+  job7:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 7
+  job8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 8
+  job9:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 9
+  job10:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 10
+  job11:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo 11

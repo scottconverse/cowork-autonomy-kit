@@ -1,0 +1,22 @@
+name: Docs link check
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+  schedule:
+    - cron: "30 3 * * *"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx linkinator docs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: link-report
+          path: report.txt
+          retention-days: 7

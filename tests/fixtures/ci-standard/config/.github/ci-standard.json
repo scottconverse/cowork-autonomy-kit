@@ -1,0 +1,4 @@
+{
+  "required": ["checks.yml"],
+  "maxJobMinutes": 15
+}
