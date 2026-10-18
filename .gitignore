@@ -30,3 +30,10 @@ desktop.ini
 dist/
 node_modules/
 .gauntletgate/
+
+# Per-machine agent-project state (New-AgentProject.ps1 output)
+.claude/hook-kit.json
+.claude/READ-LEDGER.md
+.claude/state/
+.claude/command-gate-override
+work/receipts/

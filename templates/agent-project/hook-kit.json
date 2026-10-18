@@ -29,6 +29,15 @@
     "label": "__PROJECT__"
   },
 
+  "command-gate": {
+    "label": "__PROJECT__"
+  },
+
+  "ran-before-done": {
+    "stateDir": "__CONFIG_DIR__/state",
+    "label": "__PROJECT__"
+  },
+
   "double-check": {
     "quote": "Owner: \"Check everything twice, read everything, do not skim, check the code.\"",
     "label": "__PROJECT__"
