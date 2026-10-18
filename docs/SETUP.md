@@ -1,6 +1,6 @@
 # Claude Code Windows setup
 
-Version 2.0.0 - Windows
+Version 2.1.0 - Windows
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 

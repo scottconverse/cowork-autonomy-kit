@@ -1,0 +1,5 @@
+{
+  "required": ["windows.yml"],
+  "maxRequired": 10,
+  "maxJobMinutes": 10
+}

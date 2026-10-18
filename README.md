@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit
 
-Version 2.0.0 - Windows - Independent community project, not affiliated with Anthropic.
+Version 2.1.0 - Windows - Independent community project, not affiliated with Anthropic.
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
@@ -8,7 +8,7 @@ The Cowork tab is not in scope. Cowork has its own permission modes and runs com
 
 The repository and CLAUDE-Cowork-*.md filenames are historical and remain stable for existing installs.
 
-[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [User manual](docs/USER-MANUAL.md) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v2.0.0) | [Changelog](CHANGELOG.md)
+[Website](https://scottconverse.github.io/cowork-autonomy-kit/) | [User manual](docs/USER-MANUAL.md) | [Setup guide](docs/SETUP.md) | [Latest release](https://github.com/scottconverse/cowork-autonomy-kit/releases/tag/v2.1.0) | [Changelog](CHANGELOG.md)
 
 ## What it does
 
@@ -30,7 +30,7 @@ Review the [setup guide](docs/SETUP.md) before running `Install.cmd`. Setup show
 
 Anthropic states: "`bypassPermissions` offers no protection against prompt injection or unintended actions." [Permission modes](https://code.claude.com/docs/en/permission-modes). With the helper installed, code Claude writes under `C:\dev\` can run as administrator without a UAC prompt for each action. Trusted roots do not sandbox script effects. Retained `deny` rules still apply in bypass mode; use `-SkipClearBlockingRules` to retain them during Setup. Managed policy, hooks, Desktop mode selection and built-in restrictions may still limit execution.
 
-Download the [v2.0.0 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/download/v2.0.0/cowork-autonomy-kit-v2.0.0.zip), verify it against the release SHA256SUMS.txt, extract it, inspect it, then run `Install.cmd`. The optional helper requests Windows UAC approval. The kit does not install Claude itself.
+Download the [v2.1.0 ZIP](https://github.com/scottconverse/cowork-autonomy-kit/releases/download/v2.1.0/cowork-autonomy-kit-v2.1.0.zip), verify it against the release SHA256SUMS.txt, extract it, inspect it, then run `Install.cmd`. The optional helper requests Windows UAC approval. The kit does not install Claude itself.
 
 Fully quit Claude (right-click the Claude icon in the system tray, Quit), then open it again. A new session alone does not load new PATH entries; the desktop app does not read PowerShell profiles.
 
@@ -38,7 +38,7 @@ Fully quit Claude (right-click the Claude icon in the system tray, Quit), then o
 
 Upgrade directly from v1.6.1 by running the new Setup; do not uninstall first. The first pre-kit snapshots are preserved and each settings change gets an exact recovery record. Older helper/watcher migrations remain separate; see the setup guide. For a customized live CLAUDE.md, add `@CLAUDE-Cowork-Autonomous-Software-Development.md` on its own line if Doctor reports the import missing.
 
-Version 2.0.0 changes defaults: selected ask/deny rules are now cleared unless you opt out. [Unblocking and recovery](docs/UNBLOCKING.md) covers Doctor coverage, both opt-outs, `CLAUDE_CONFIG_DIR`, project settings, interrupted operations and `-RestoreLastReconcile`.
+Version 2.1.0 adds `New-AgentProject.ps1` (turn the hook-kit gates on for a project before its first agent prompt) and `Test-CiStandard.ps1` (audit a repository's workflows against the CI standard); Setup behaviour is unchanged from 2.0.0. Version 2.0.0 changes defaults: selected ask/deny rules are now cleared unless you opt out. [Unblocking and recovery](docs/UNBLOCKING.md) covers Doctor coverage, both opt-outs, `CLAUDE_CONFIG_DIR`, project settings, interrupted operations and `-RestoreLastReconcile`.
 
 ## Documentation and verification
 

@@ -1,6 +1,6 @@
 # Claude Code Windows Autonomy Kit developer manual
 
-Version 2.0.0
+Version 2.1.0
 
 Full-permission setup for Claude Code on Windows: the desktop app's Code tab and the CLI.
 
