@@ -176,7 +176,7 @@ Set-VerifiedHelperAcl -Path $installLog -UserSid $userSid -Kind ReadFile
 $target = $files.helper_script
 $invokerTarget = $files.invoker_script
 
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$target`" -Root `"$DataRoot`""
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$target`" -Root `"$DataRoot`""  # Hidden: the task runs with an interactive token, so without it a console window sits on the desktop for the whole job and closing it kills the helper with 0xC000013A (seen twice on Oct 19 2026)
 $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 

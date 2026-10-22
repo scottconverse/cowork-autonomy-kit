@@ -198,7 +198,7 @@ function Invoke-HelperAction {
             $taskName = [string]$Job.taskName
             if ($taskName -notmatch "^[A-Za-z0-9._ -]{1,80}$") { throw "Invalid taskName." }
             $script = Assert-TrustedPath -Path ([string]$Job.scriptPath)
-            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$script`""
+            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
             $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
             Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Force | Out-Null
             return @{ ok = $true; task = $taskName; script = $script }
