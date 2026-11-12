@@ -118,6 +118,15 @@ try {
     Expect-Failure { Assert-TrustedPath (Join-Path $env:USERPROFILE '.claude\unsafe.ps1') } 'not under a trusted'
     Expect-Failure { Assert-TrustedPath (Join-Path $env:TEMP 'unsafe.ps1') } 'not under a trusted'
     Assert ((Assert-TrustedPath 'C:\dev\Example\x.ps1') -eq 'C:\dev\Example\x.ps1') 'development root retained'
+    # Every scheduled-task action the helper or its installer registers must launch hidden:
+    # a visible console interrupts the user, and closing it kills the job (0xC000013A).
+    foreach ($source in @('ClaudeElevatedDevHelper.ps1','Install-ClaudeElevatedDevHelper.ps1')) {
+        $sourceErrors = $null
+        $sourceAst = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $kit "elevated-dev-helper\$source"), [ref]$null, [ref]$sourceErrors)
+        $taskActions = @($sourceAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'New-ScheduledTaskAction' }, $true))
+        Assert ($taskActions.Count -ge 1) "$source registers a scheduled-task action"
+        Assert (@($taskActions | Where-Object { $_.Extent.Text -notmatch '-Argument\s+"[^"]*-WindowStyle Hidden' }).Count -eq 0) "$source launches every scheduled-task action with -WindowStyle Hidden"
+    }
     Write-Host "SUMMARY: $passed PASS / 0 FAIL"
 } finally {
     Remove-Variable -Name helperInstallTestTriggeredTask -Scope Global -ErrorAction SilentlyContinue

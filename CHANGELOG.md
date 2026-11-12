@@ -2,6 +2,14 @@
 
 All notable changes to the Cowork Autonomy Kit. Dates are UTC.
 
+## v2.1.1 - 2026-11-12
+
+### Fixed
+- Elevated helper: the helper's own scheduled task and tasks created through `RegisterDevScheduledTask` now launch PowerShell with `-WindowStyle Hidden`. Elevated jobs no longer open a console window over the user's work, and the helper can no longer be killed (0xC000013A) by someone closing that window mid-job. Existing installs pick this up by rerunning `elevated-dev-helper\Install-ClaudeElevatedDevHelper-AsAdmin.cmd`.
+
+### Changed
+- `windows.yml`: documentation-only changes no longer start a CI run.
+
 ## v2.1.0 - 2026-10-18
 
 ### Added
